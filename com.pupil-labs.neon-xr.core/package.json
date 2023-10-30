@@ -1,0 +1,24 @@
+{
+  "name": "com.pupil-labs.neon-xr.core",
+  "version": "1.0.0",
+  "displayName": "Neon XR Core",
+  "description": "Minimal subset of scripts that are required to get gaze data from Neon",
+  "unity": "2021.3",
+  "unityRelease": "21f1",
+  "documentationUrl": "https://github.com/pupil-labs/neon-xr",
+  "changelogUrl": "https://github.com/pupil-labs/neon-xr",
+  "licensesUrl": "https://github.com/pupil-labs/neon-xr",
+    "dependencies": {
+        "com.unity.addressables": "1.19.19",
+        "com.unity.inputsystem": "1.6.1",
+        "com.unity.xr.interaction.toolkit": "2.3.0"
+    },
+ "keywords": [
+    "neon",
+    "gaze",
+    "tracking"
+  ],
+  "author": {
+    "name": "Pupil Labs"
+  }
+}
