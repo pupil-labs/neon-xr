@@ -18,6 +18,7 @@ namespace PupilLabs
         private LayerMask raycastMask = ~0;
         [SerializeField]
         private float raycastDistance = 10f;
+        [SerializeField]
         private Transform reference;
         private Vector3 localGazeOrigin = Vector3.zero;
         private Vector3 localGazeDirection = Vector3.forward;
