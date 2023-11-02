@@ -9,7 +9,7 @@
   "changelogUrl": "https://github.com/pupil-labs/neon-xr",
   "licensesUrl": "https://github.com/pupil-labs/neon-xr",
     "dependencies": {
-        "com.unity.addressables": "1.19.19",
+        "com.unity.addressables": "1.21.19",
         "com.unity.inputsystem": "1.6.1",
         "com.unity.xr.interaction.toolkit": "2.3.0"
     },
