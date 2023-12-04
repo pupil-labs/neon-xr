@@ -5,25 +5,45 @@ namespace PupilLabs
     public class GazeDataVisualizer : MonoBehaviour
     {
         [SerializeField]
-        private bool rayVisible = false;
+        protected bool registerOnEnable = false;
+
         [SerializeField]
-        private float rayLength = 2f;
+        protected Transform reference;
+
         [SerializeField]
-        private LineRenderer lineRenderer;
+        protected bool rayVisible = false;
         [SerializeField]
-        private bool doRaycast = false;
+        protected float rayLength = 2f;
         [SerializeField]
-        private GameObject raycastPointer;
+        protected LineRenderer lineRenderer;
+
         [SerializeField]
-        private LayerMask raycastMask = ~0;
+        protected bool doRaycast = false;
         [SerializeField]
-        private float raycastDistance = 10f;
+        protected bool raycastPointerVisible = false;
         [SerializeField]
-        private Transform reference;
-        private Vector3 localGazeOrigin = Vector3.zero;
-        private Vector3 localGazeDirection = Vector3.forward;
+        protected GameObject raycastPointer;
+        [SerializeField]
+        protected LayerMask raycastMask = ~0;
+        [SerializeField]
+        protected float raycastDistance = 10f;
+
+        public Serializable.RaycastHitEvent onHit;
+
+        protected Vector3 localGazeOrigin = Vector3.zero;
+        protected Vector3 localGazeDirection = Vector3.forward;
 
         public bool RayVisible { get { return rayVisible; } set { rayVisible = value; } }
+        public bool DoRaycast { get { return doRaycast; } set { doRaycast = value; } }
+        public bool RaycastPointerVisible { get { return raycastPointerVisible; } set { raycastPointerVisible = value; } }
+
+        protected virtual void OnEnable()
+        {
+            if (registerOnEnable)
+            {
+                ServiceLocator.Instance.GazeDataProvider.gazeDataReady.AddListener(OnGazeDataReady);
+            }
+        }
 
         public void OnGazeDataReady(GazeDataProvider gazeDataProvider)
         {
@@ -31,7 +51,7 @@ namespace PupilLabs
             localGazeDirection = gazeDataProvider.GazeRay.direction;
         }
 
-        private void Update()
+        protected virtual void Update()
         {
             if (reference == null)
             {
@@ -41,23 +61,46 @@ namespace PupilLabs
             var worldOrigin = reference.TransformPoint(localGazeOrigin);
             var worldDirection = reference.TransformDirection(localGazeDirection);
 
-            raycastPointer.SetActive(false);
+            float dist = UpdateRaycast(worldOrigin, worldDirection);
+
+            if (lineRenderer != null)
+            {
+                lineRenderer.enabled = false;
+            }
+            if (rayVisible)
+            {
+                lineRenderer.SetPosition(0, worldOrigin);
+                lineRenderer.SetPosition(1, worldOrigin + worldDirection * (dist > 0 ? dist : rayLength));
+                lineRenderer.enabled = true;
+            }
+        }
+
+        protected virtual float UpdateRaycast(Vector3 worldOrigin, Vector3 worldDirection)
+        {
+            if (raycastPointer != null)
+            {
+                raycastPointer.SetActive(false);
+            }
             if (doRaycast)
             {
                 RaycastHit hit;
                 if (Physics.Raycast(worldOrigin, worldDirection, out hit, raycastDistance, raycastMask))
                 {
+                    onHit.Invoke(hit);
                     raycastPointer.transform.position = hit.point;
-                    raycastPointer.SetActive(true);
+                    raycastPointer.SetActive(raycastPointerVisible);
+                    return hit.distance;
                 }
             }
+            return -1f;
+        }
 
-            if (rayVisible)
+        protected virtual void OnDisable()
+        {
+            if (registerOnEnable)
             {
-                lineRenderer.SetPosition(0, worldOrigin);
-                lineRenderer.SetPosition(1, worldOrigin + worldDirection * rayLength);
+                ServiceLocator.Instance.GazeDataProvider.gazeDataReady.RemoveListener(OnGazeDataReady);
             }
-            lineRenderer.enabled = rayVisible;
         }
     }
 }

@@ -20,6 +20,9 @@ namespace PupilLabs.Serializable
     public class GazeDataProviderEvent : UnityEvent<GazeDataProvider> { };
 
     [Serializable]
+    public class RaycastHitEvent : UnityEvent<RaycastHit> { };
+
+    [Serializable]
     public struct SVector3
     {
         public float x;
