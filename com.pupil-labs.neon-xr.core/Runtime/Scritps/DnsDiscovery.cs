@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
+using System.Net.Http;
 using System.Net.Sockets;
 using System.Threading.Tasks;
 using UnityEngine;
@@ -63,13 +64,41 @@ namespace PupilLabs
                             Debug.Log($"[DnsDiscovery] received response from: {txt}");
                             deviceName = txt.StartsWith("PI monitor") ? txt : null;
                         }
-                    }
-                    if (ip != null && deviceName != null)
-                    {
-                        deviceName = deviceName.Split(':')[1]; //PI monitor:Neon Companion:a95136f3304b9204
-                        if (name == String.Empty || deviceName == name)
+                        else
                         {
-                            return ip;
+                            var txt = String.Join("", a.Name.Name.Select(x => x.Name));
+                            Debug.Log($"[DnsDiscovery] received response of type {a.Type} from: {txt}");
+                        }
+                    }
+                    if (ip != null)
+                    {
+                        if (deviceName != null)
+                        {
+                            deviceName = deviceName.Split(':')[1]; //PI monitor:Neon Companion:a95136f3304b9204
+                            if (name == String.Empty || deviceName == name)
+                            {
+                                return ip;
+                            }
+                        }
+                        else
+                        {
+                            try
+                            {
+                                using (var client = new HttpClient())
+                                {
+                                    client.Timeout = TimeSpan.FromMilliseconds(1000);
+                                    var result = await client.GetStringAsync($"http://{ip}:8080/api/status");
+                                    if (result.StartsWith("{\"message\":\"Success\""))
+                                    {
+                                        return ip;
+                                    }
+                                }
+                            }
+                            catch (TaskCanceledException e)
+                            {
+                                Debug.Log("[DnsDiscovery] REST probe timeout");
+                                Debug.Log(e.Message);
+                            }
                         }
                     }
                 }
