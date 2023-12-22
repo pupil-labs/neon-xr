@@ -3,10 +3,10 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
-using System.Net.Http;
 using System.Net.Sockets;
 using System.Threading.Tasks;
 using UnityEngine;
+using UnityEngine.Networking;
 
 namespace PupilLabs
 {
@@ -82,22 +82,30 @@ namespace PupilLabs
                         }
                         else
                         {
-                            try
+                            string uri = $"http://{ip}:8080/api/status";
+                            Debug.Log($"[DnsDiscovery] REST probe using: {uri}");
+                            using (UnityWebRequest webRequest = UnityWebRequest.Get(uri))
                             {
-                                using (var client = new HttpClient())
+                                webRequest.timeout = 1;
+                                var operation = webRequest.SendWebRequest();
+
+                                while (!operation.isDone)
                                 {
-                                    client.Timeout = TimeSpan.FromMilliseconds(1000);
-                                    var result = await client.GetStringAsync($"http://{ip}:8080/api/status");
+                                    await Task.Delay(100);
+                                }
+
+                                if (webRequest.result == UnityWebRequest.Result.Success)
+                                {
+                                    var result = webRequest.downloadHandler.text;
                                     if (result.StartsWith("{\"message\":\"Success\""))
                                     {
                                         return ip;
                                     }
                                 }
-                            }
-                            catch (TaskCanceledException e)
-                            {
-                                Debug.Log("[DnsDiscovery] REST probe timeout");
-                                Debug.Log(e.Message);
+                                else
+                                {
+                                    Debug.Log($"[DnsDiscovery] REST probe failed with error: {webRequest.error}");
+                                }
                             }
                         }
                     }
