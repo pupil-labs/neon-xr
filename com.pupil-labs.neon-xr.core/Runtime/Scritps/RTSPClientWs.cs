@@ -208,7 +208,7 @@ namespace PupilLabs
                     timeoutCts.CancelAfter(readTimeout);
                     bool binaryMessageReceived = await ReceiveMessageAsync(ws, timeoutToken);
                     timeoutCts.CancelAfter(Timeout.Infinite);
-                    if (binaryMessageReceived && messageStream.Length == 21 && GetRTPType(messageBuffer) == 99)
+                    if (binaryMessageReceived && (messageStream.Length == 21 || messageStream.Length == 29 || messageStream.Length == 77) && GetRTPType(messageBuffer) == 99)
                     {
                         gazePointBufferIndex = ++gazePointBufferIndex % gazePointBuffer.Length;
                         lock (gazePointLock)
