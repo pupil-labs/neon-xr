@@ -51,7 +51,7 @@ namespace PupilLabs
             localGazeDirection = gazeDataProvider.GazeRay.direction;
         }
 
-        protected virtual void Update()
+        protected virtual void LateUpdate()
         {
             if (reference == null)
             {

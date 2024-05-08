@@ -134,23 +134,4 @@ namespace PupilLabs
             return localBytes;
         }
     }
-
-    public static class VectorUtils
-    {
-        public static Vector2 Average(this IEnumerable<Vector2> vectors)
-        {
-            float x = 0f;
-            float y = 0f;
-            int count = 0;
-
-            foreach (var pos in vectors)
-            {
-                x += pos.x;
-                y += pos.y;
-                count++;
-            }
-
-            return new Vector2(x / count, y / count);
-        }
-    }
 }

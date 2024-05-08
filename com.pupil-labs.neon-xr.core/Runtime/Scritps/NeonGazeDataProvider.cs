@@ -19,7 +19,19 @@ namespace PupilLabs
         [SerializeField]
         private Vector2 simulatedResolution = new Vector2(1600, 1200);
         [SerializeField]
+        private bool simulateEyeState = false;
+        [SerializeField]
+        private Vector3 simulatedLeftEyePos = new Vector3(-0.032f, -0.02f, -0.02f);
+        [SerializeField]
+        private Vector3 simulatedRightEyePos = new Vector3(0.032f, -0.02f, -0.02f);
+        [SerializeField]
+        private float simulatedGazeDistance = 1f;
+        [SerializeField]
+        private float simulatedPupilDiameter = 0.004f;
+        [SerializeField]
         private bool gazeSmoothing = true;
+        [SerializeField]
+        private bool eyeStateSmoothing = true;
         [SerializeField]
         private int smoothingWindowSize = 10;
         [SerializeField]
@@ -32,6 +44,10 @@ namespace PupilLabs
         private Vector3 rawGazeDir = Vector3.forward;
         public override Vector2 RawGazePoint { get { return rawGazePoint; } }
         private Vector2 rawGazePoint;
+        public override bool EyeStateAvailable { get { return eyeStateAvailable; } }
+        private bool eyeStateAvailable = false;
+        public override EyeState RawEyeState { get { return rawEyeState; } }
+        private EyeState rawEyeState;
 
         private async void Awake()
         {
@@ -46,7 +62,7 @@ namespace PupilLabs
                 return;
             }
 
-            using (rtspClient = new RTSPClientWs(storage.Config.rtspSettings, rtspAutoReconnect, smoothingWindowSize))
+            using (rtspClient = new RTSPClientWs(storage.Config.rtspSettings, rtspAutoReconnect, smoothingWindowSize, smoothingWindowSize))
             {
                 rtspClient.GazeDataReceived += OnGazeDataReceived;
                 await rtspClient.RunAsync();
@@ -73,9 +89,31 @@ namespace PupilLabs
                 {
                     rawGazePoint = gazeSmoothing ? rtspClient.SmoothGazePoint : rtspClient.GazePoint;
                     dataReceived = false;
+
+                    eyeStateAvailable = rtspClient.EyeStateAvailable;
+                    if (eyeStateAvailable)
+                    {
+                        rawEyeState = eyeStateSmoothing ? rtspClient.SmoothEyeState : rtspClient.EyeState;
+                    }
                 }
 
                 rawGazeDir = CameraUtils.ImgPointToDir(rawGazePoint, storage.CameraIntrinsics.cameraMatrix, storage.CameraIntrinsics.distortionCoefficients);
+
+                if (simulationEnabled && simulateEyeState)
+                {
+                    eyeStateAvailable = true;
+
+                    Vector3 gazePoint = rawGazeDir.normalized * simulatedGazeDistance;
+
+                    rawEyeState.eyeballCenterLeft = simulatedLeftEyePos;
+                    rawEyeState.opticalAxisLeft = gazePoint - simulatedLeftEyePos;
+                    rawEyeState.pupilDiameterLeft = simulatedPupilDiameter;
+
+                    rawEyeState.eyeballCenterRight = simulatedRightEyePos;
+                    rawEyeState.opticalAxisRight = gazePoint - simulatedRightEyePos;
+                    rawEyeState.pupilDiameterRight = simulatedPupilDiameter;
+                }
+
                 OnGazeDataReady();
             }
         }

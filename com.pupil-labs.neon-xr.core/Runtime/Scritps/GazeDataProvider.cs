@@ -6,11 +6,25 @@ namespace PupilLabs
     {
         public abstract Vector3 RawGazeDir { get; }
         public abstract Vector2 RawGazePoint { get; }
+        public abstract bool EyeStateAvailable { get; }
+        public abstract EyeState RawEyeState { get; }
 
-        public UnityEngine.Pose GazeOrigin { get { return gazeOrigin; } }
-        protected UnityEngine.Pose gazeOrigin;
+        public Pose GazeOrigin { get { return gazeOrigin; } }
+        protected Pose gazeOrigin;
 
         public virtual Ray GazeRay { get { return new Ray(gazeOrigin.position, gazeOrigin.rotation * RawGazeDir); } }
+        public virtual EyeState EyeState
+        {
+            get
+            {
+                EyeState state = RawEyeState;
+                state.eyeballCenterLeft = gazeOrigin.rotation * state.eyeballCenterLeft + gazeOrigin.position;
+                state.opticalAxisLeft = gazeOrigin.rotation * state.opticalAxisLeft;
+                state.eyeballCenterRight = gazeOrigin.rotation * state.eyeballCenterRight + gazeOrigin.position;
+                state.opticalAxisRight = gazeOrigin.rotation * state.opticalAxisRight;
+                return state;
+            }
+        }
 
         public Serializable.GazeDataProviderEvent gazeDataReady;
 

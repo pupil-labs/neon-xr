@@ -16,8 +16,21 @@ namespace PupilLabs
         private readonly RTSPSettings settings;
         private readonly bool autoReconnect;
         private readonly object gazePointLock = new object();
+        private readonly object eyeStateLock = new object();
         private int gazePointBufferIndex;
+        private int eyeStateBufferIndex;
         private Vector2[] gazePointBuffer;
+
+        private volatile bool eyeStateAvailable = false;
+
+        private EyeState eyeState = new EyeState();
+        private Vector3[] eyeballCenterLeftBuffer;
+        private Vector3[] opticalAxisLeftBuffer;
+        private float[] pupilDiameterLeftBuffer;
+        private Vector3[] eyeballCenterRightBuffer;
+        private Vector3[] opticalAxisRightBuffer;
+        private float[] pupilDiameterRightBuffer;
+
         public override Vector2 GazePoint
         {
             get
@@ -35,7 +48,48 @@ namespace PupilLabs
             {
                 lock (gazePointLock)
                 {
-                    return VectorUtils.Average(gazePointBuffer);
+                    return gazePointBuffer.Average();
+                }
+            }
+        }
+
+        public override bool EyeStateAvailable
+        {
+            get { return eyeStateAvailable; }
+        }
+
+        public override EyeState EyeState
+        {
+            get
+            {
+                lock (eyeStateLock)
+                {
+                    eyeState.pupilDiameterLeft = pupilDiameterLeftBuffer[eyeStateBufferIndex];
+                    eyeState.eyeballCenterLeft = eyeballCenterLeftBuffer[eyeStateBufferIndex];
+                    eyeState.opticalAxisLeft = opticalAxisLeftBuffer[eyeStateBufferIndex];
+
+                    eyeState.pupilDiameterRight = pupilDiameterRightBuffer[eyeStateBufferIndex];
+                    eyeState.eyeballCenterRight = eyeballCenterRightBuffer[eyeStateBufferIndex];
+                    eyeState.opticalAxisRight = opticalAxisRightBuffer[eyeStateBufferIndex];
+                    return eyeState;
+                }
+            }
+        }
+
+        public override EyeState SmoothEyeState
+        {
+            get
+            {
+                lock (eyeStateLock)
+                {
+                    eyeState.pupilDiameterLeft = pupilDiameterLeftBuffer.Average();
+                    eyeState.eyeballCenterLeft = eyeballCenterLeftBuffer.Average();
+                    eyeState.opticalAxisLeft = opticalAxisLeftBuffer.Average();
+
+                    eyeState.pupilDiameterRight = pupilDiameterRightBuffer.Average();
+                    eyeState.eyeballCenterRight = eyeballCenterRightBuffer.Average();
+                    eyeState.opticalAxisRight = opticalAxisRightBuffer.Average();
+                    return eyeState;
                 }
             }
         }
@@ -51,12 +105,22 @@ namespace PupilLabs
         CancellationToken stopToken;
         CancellationToken stopOrTimeoutToken;
 
-        public RTSPClientWs(RTSPSettings settings, bool autoReconnect = true, int gazePointBufferSize = 10)
+        public RTSPClientWs(RTSPSettings settings, bool autoReconnect = true, int gazePointBufferSize = 5, int eyeStateBufferSize = 5)
         {
             this.settings = settings;
             this.autoReconnect = autoReconnect;
+
             gazePointBuffer = new Vector2[gazePointBufferSize];
             gazePointBufferIndex = gazePointBufferSize - 1;
+
+            pupilDiameterLeftBuffer = new float[eyeStateBufferSize];
+            eyeballCenterLeftBuffer = new Vector3[eyeStateBufferSize];
+            opticalAxisLeftBuffer = new Vector3[eyeStateBufferSize];
+            pupilDiameterRightBuffer = new float[eyeStateBufferSize];
+            eyeballCenterRightBuffer = new Vector3[eyeStateBufferSize];
+            opticalAxisRightBuffer = new Vector3[eyeStateBufferSize];
+            eyeStateBufferIndex = eyeStateBufferSize - 1;
+
             messageStream = new MemoryStream(messageBuffer, true);
         }
 
@@ -215,6 +279,23 @@ namespace PupilLabs
                         {
                             DecodeGazePoint(messageBuffer, ref gazePointBuffer[gazePointBufferIndex]);
                         }
+                        if (messageStream.Length == 77)
+                        {
+                            eyeStateAvailable = true;
+                            eyeStateBufferIndex = ++eyeStateBufferIndex % pupilDiameterLeftBuffer.Length;
+                            lock (eyeStateLock)
+                            {
+                                DecodeEyeState(
+                                    messageBuffer,
+                                    ref pupilDiameterLeftBuffer[eyeStateBufferIndex],
+                                    ref eyeballCenterLeftBuffer[eyeStateBufferIndex],
+                                    ref opticalAxisLeftBuffer[eyeStateBufferIndex],
+                                    ref pupilDiameterRightBuffer[eyeStateBufferIndex],
+                                    ref eyeballCenterRightBuffer[eyeStateBufferIndex],
+                                    ref opticalAxisRightBuffer[eyeStateBufferIndex]
+                                );
+                            }
+                        }
                         OnGazeDataReceived();
 
                         if (++msgCounter == msgsPerLog)
@@ -261,6 +342,25 @@ namespace PupilLabs
         {
             gp.x = BitConverter.ToSingle(NetworkUtils.NetworkBytesToLocal(bytes, 12, sizeof(float)), 0);
             gp.y = BitConverter.ToSingle(NetworkUtils.NetworkBytesToLocal(bytes, 16, sizeof(float)), 0);
+        }
+
+        private void DecodeEyeState(byte[] bytes, ref float pdl, ref Vector3 ecl, ref Vector3 oal, ref float pdr, ref Vector3 ecr, ref Vector3 oar, float scale = 0.001f)
+        {
+            pdl = BitConverter.ToSingle(NetworkUtils.NetworkBytesToLocal(bytes, 21, sizeof(float)), 0) * scale;
+            ecl.x = BitConverter.ToSingle(NetworkUtils.NetworkBytesToLocal(bytes, 25, sizeof(float)), 0) * scale;
+            ecl.y = -BitConverter.ToSingle(NetworkUtils.NetworkBytesToLocal(bytes, 29, sizeof(float)), 0) * scale;
+            ecl.z = BitConverter.ToSingle(NetworkUtils.NetworkBytesToLocal(bytes, 33, sizeof(float)), 0) * scale;
+            oal.x = BitConverter.ToSingle(NetworkUtils.NetworkBytesToLocal(bytes, 37, sizeof(float)), 0) * scale;
+            oal.y = -BitConverter.ToSingle(NetworkUtils.NetworkBytesToLocal(bytes, 41, sizeof(float)), 0) * scale;
+            oal.z = BitConverter.ToSingle(NetworkUtils.NetworkBytesToLocal(bytes, 45, sizeof(float)), 0) * scale;
+
+            pdr = BitConverter.ToSingle(NetworkUtils.NetworkBytesToLocal(bytes, 49, sizeof(float)), 0) * scale;
+            ecr.x = BitConverter.ToSingle(NetworkUtils.NetworkBytesToLocal(bytes, 53, sizeof(float)), 0) * scale;
+            ecr.y = -BitConverter.ToSingle(NetworkUtils.NetworkBytesToLocal(bytes, 57, sizeof(float)), 0) * scale;
+            ecr.z = BitConverter.ToSingle(NetworkUtils.NetworkBytesToLocal(bytes, 61, sizeof(float)), 0) * scale;
+            oar.x = BitConverter.ToSingle(NetworkUtils.NetworkBytesToLocal(bytes, 65, sizeof(float)), 0) * scale;
+            oar.y = -BitConverter.ToSingle(NetworkUtils.NetworkBytesToLocal(bytes, 69, sizeof(float)), 0) * scale;
+            oar.z = BitConverter.ToSingle(NetworkUtils.NetworkBytesToLocal(bytes, 73, sizeof(float)), 0) * scale;
         }
 
         private async Task SendMessageAsync(ClientWebSocket ws, string message, CancellationToken cancellationToken)
