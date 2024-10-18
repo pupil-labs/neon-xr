@@ -15,13 +15,11 @@ namespace PupilLabs
     {
         private readonly RTSPSettings settings;
         private readonly bool autoReconnect;
-        private readonly object gazePointLock = new object();
-        private readonly object eyeStateLock = new object();
         private int gazePointBufferIndex;
         private int eyeStateBufferIndex;
         private Vector2[] gazePointBuffer;
 
-        private volatile bool eyeStateAvailable = false;
+        private bool eyeStateAvailable = false;
 
         private EyeState eyeState = new EyeState();
         private Vector3[] eyeballCenterLeftBuffer;
@@ -34,23 +32,13 @@ namespace PupilLabs
         public override Vector2 GazePoint
         {
             get
-            {
-                lock (gazePointLock)
-                {
-                    return gazePointBuffer[gazePointBufferIndex];
-                }
-            }
+            { return gazePointBuffer[gazePointBufferIndex]; }
         }
 
         public override Vector2 SmoothGazePoint
         {
             get
-            {
-                lock (gazePointLock)
-                {
-                    return gazePointBuffer.Average();
-                }
-            }
+            { return gazePointBuffer.Average(); }
         }
 
         public override bool EyeStateAvailable
@@ -62,17 +50,14 @@ namespace PupilLabs
         {
             get
             {
-                lock (eyeStateLock)
-                {
-                    eyeState.pupilDiameterLeft = pupilDiameterLeftBuffer[eyeStateBufferIndex];
-                    eyeState.eyeballCenterLeft = eyeballCenterLeftBuffer[eyeStateBufferIndex];
-                    eyeState.opticalAxisLeft = opticalAxisLeftBuffer[eyeStateBufferIndex];
+                eyeState.pupilDiameterLeft = pupilDiameterLeftBuffer[eyeStateBufferIndex];
+                eyeState.eyeballCenterLeft = eyeballCenterLeftBuffer[eyeStateBufferIndex];
+                eyeState.opticalAxisLeft = opticalAxisLeftBuffer[eyeStateBufferIndex];
 
-                    eyeState.pupilDiameterRight = pupilDiameterRightBuffer[eyeStateBufferIndex];
-                    eyeState.eyeballCenterRight = eyeballCenterRightBuffer[eyeStateBufferIndex];
-                    eyeState.opticalAxisRight = opticalAxisRightBuffer[eyeStateBufferIndex];
-                    return eyeState;
-                }
+                eyeState.pupilDiameterRight = pupilDiameterRightBuffer[eyeStateBufferIndex];
+                eyeState.eyeballCenterRight = eyeballCenterRightBuffer[eyeStateBufferIndex];
+                eyeState.opticalAxisRight = opticalAxisRightBuffer[eyeStateBufferIndex];
+                return eyeState;
             }
         }
 
@@ -80,17 +65,14 @@ namespace PupilLabs
         {
             get
             {
-                lock (eyeStateLock)
-                {
-                    eyeState.pupilDiameterLeft = pupilDiameterLeftBuffer.Average();
-                    eyeState.eyeballCenterLeft = eyeballCenterLeftBuffer.Average();
-                    eyeState.opticalAxisLeft = opticalAxisLeftBuffer.Average();
+                eyeState.pupilDiameterLeft = pupilDiameterLeftBuffer.Average();
+                eyeState.eyeballCenterLeft = eyeballCenterLeftBuffer.Average();
+                eyeState.opticalAxisLeft = opticalAxisLeftBuffer.Average();
 
-                    eyeState.pupilDiameterRight = pupilDiameterRightBuffer.Average();
-                    eyeState.eyeballCenterRight = eyeballCenterRightBuffer.Average();
-                    eyeState.opticalAxisRight = opticalAxisRightBuffer.Average();
-                    return eyeState;
-                }
+                eyeState.pupilDiameterRight = pupilDiameterRightBuffer.Average();
+                eyeState.eyeballCenterRight = eyeballCenterRightBuffer.Average();
+                eyeState.opticalAxisRight = opticalAxisRightBuffer.Average();
+                return eyeState;
             }
         }
 
@@ -265,47 +247,38 @@ namespace PupilLabs
             int msgCounter = 0;
             int msgsPerLog = 2000;
             //read data (mixed)
-            await Task.Run(async () =>
+            while (stopToken.IsCancellationRequested == false)
             {
-                while (stopToken.IsCancellationRequested == false)
+                timeoutCts.CancelAfter(readTimeout);
+                bool binaryMessageReceived = await ReceiveMessageAsync(ws, timeoutToken);
+                timeoutCts.CancelAfter(Timeout.Infinite);
+                if (binaryMessageReceived && (messageStream.Length == 21 || messageStream.Length == 29 || messageStream.Length == 77) && GetRTPType(messageBuffer) == 99)
                 {
-                    timeoutCts.CancelAfter(readTimeout);
-                    bool binaryMessageReceived = await ReceiveMessageAsync(ws, timeoutToken);
-                    timeoutCts.CancelAfter(Timeout.Infinite);
-                    if (binaryMessageReceived && (messageStream.Length == 21 || messageStream.Length == 29 || messageStream.Length == 77) && GetRTPType(messageBuffer) == 99)
+                    gazePointBufferIndex = ++gazePointBufferIndex % gazePointBuffer.Length;
+                    DecodeGazePoint(messageBuffer, ref gazePointBuffer[gazePointBufferIndex]);
+                    if (messageStream.Length == 77)
                     {
-                        gazePointBufferIndex = ++gazePointBufferIndex % gazePointBuffer.Length;
-                        lock (gazePointLock)
-                        {
-                            DecodeGazePoint(messageBuffer, ref gazePointBuffer[gazePointBufferIndex]);
-                        }
-                        if (messageStream.Length == 77)
-                        {
-                            eyeStateAvailable = true;
-                            eyeStateBufferIndex = ++eyeStateBufferIndex % pupilDiameterLeftBuffer.Length;
-                            lock (eyeStateLock)
-                            {
-                                DecodeEyeState(
-                                    messageBuffer,
-                                    ref pupilDiameterLeftBuffer[eyeStateBufferIndex],
-                                    ref eyeballCenterLeftBuffer[eyeStateBufferIndex],
-                                    ref opticalAxisLeftBuffer[eyeStateBufferIndex],
-                                    ref pupilDiameterRightBuffer[eyeStateBufferIndex],
-                                    ref eyeballCenterRightBuffer[eyeStateBufferIndex],
-                                    ref opticalAxisRightBuffer[eyeStateBufferIndex]
-                                );
-                            }
-                        }
-                        OnGazeDataReceived();
+                        eyeStateAvailable = true;
+                        eyeStateBufferIndex = ++eyeStateBufferIndex % pupilDiameterLeftBuffer.Length;
+                        DecodeEyeState(
+                            messageBuffer,
+                            ref pupilDiameterLeftBuffer[eyeStateBufferIndex],
+                            ref eyeballCenterLeftBuffer[eyeStateBufferIndex],
+                            ref opticalAxisLeftBuffer[eyeStateBufferIndex],
+                            ref pupilDiameterRightBuffer[eyeStateBufferIndex],
+                            ref eyeballCenterRightBuffer[eyeStateBufferIndex],
+                            ref opticalAxisRightBuffer[eyeStateBufferIndex]
+                        );
+                    }
+                    OnGazeDataReceived();
 
-                        if (++msgCounter == msgsPerLog)
-                        {
-                            Debug.Log($"[RTSPClientWs] {msgsPerLog} messages processed");
-                            msgCounter = 0;
-                        }
+                    if (++msgCounter == msgsPerLog)
+                    {
+                        Debug.Log($"[RTSPClientWs] {msgsPerLog} messages processed");
+                        msgCounter = 0;
                     }
                 }
-            });
+            }
         }
 
         private async Task StopStreaming(ClientWebSocket ws, string url, string session, int timeout = 2500)
@@ -316,18 +289,15 @@ namespace PupilLabs
             string rmsg = String.Format(RTSPTemplates.tear, url, session);
             Debug.Log($"[RTSPClientWs] sending: {rmsg}");
             await SendMessageAsync(ws, rmsg, timeoutToken);
-            await Task.Run(async () =>
+            while (true)
             {
-                while (true)
+                string msg = await ReceiveStringMessageAsync(ws, timeoutToken);
+                if (msg != null && msg.StartsWith("RTSP/1.0 200 OK"))
                 {
-                    string msg = await ReceiveStringMessageAsync(ws, timeoutToken);
-                    if (msg != null && msg.StartsWith("RTSP/1.0 200 OK"))
-                    {
-                        await ws.CloseAsync(WebSocketCloseStatus.NormalClosure, null, timeoutToken);
-                        break;
-                    }
+                    await ws.CloseAsync(WebSocketCloseStatus.NormalClosure, null, timeoutToken);
+                    break;
                 }
-            });
+            }
             Debug.Log("[RTSPClientWs] closed");
 
             timeoutCts.CancelAfter(Timeout.Infinite);
@@ -387,7 +357,7 @@ namespace PupilLabs
             do
             {
                 result = await ws.ReceiveAsync(receiveBuffer, cancellationToken);
-                messageStream.Write(receiveBuffer, 0, result.Count);
+                await messageStream.WriteAsync(receiveBuffer, 0, result.Count);
             } while (!result.EndOfMessage);
 
             if (result.MessageType == WebSocketMessageType.Close)
