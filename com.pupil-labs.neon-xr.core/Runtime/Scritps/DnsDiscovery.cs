@@ -6,6 +6,8 @@ using System.Net;
 using System.Net.Sockets;
 using System.Threading.Tasks;
 using UnityEngine;
+using System.Net.Http;
+using PupilLabs.Serializable;
 
 namespace PupilLabs
 {
@@ -13,6 +15,7 @@ namespace PupilLabs
     {
         private Socket socket;
         private byte[] buffer = new byte[1024];
+        private HttpClient httpClient = null;
 
         public DnsDiscovery(IPAddress ip, int port)
         {
@@ -64,12 +67,47 @@ namespace PupilLabs
                             deviceName = txt.StartsWith("PI monitor") ? txt : null;
                         }
                     }
-                    if (ip != null && deviceName != null)
+                    if (ip != null)
                     {
-                        deviceName = deviceName.Split(':')[1]; //PI monitor:Neon Companion:a95136f3304b9204
-                        if (name == String.Empty || deviceName == name)
+                        if (deviceName != null)
                         {
-                            return ip;
+                            deviceName = deviceName.Split(':')[1]; //PI monitor:Neon Companion:a95136f3304b9204
+                        }
+                        else
+                        {
+                            if (httpClient == null)
+                            {
+                                httpClient = new HttpClient();
+                                httpClient.Timeout = TimeSpan.FromMilliseconds(1000);
+                            }
+                            try
+                            {
+                                string result = await httpClient.GetStringAsync($"http://{ip}:8080/api/status");
+                                Status status = new Status();
+                                JsonUtility.FromJsonOverwrite(result, status);
+                                if (status.message == "Success")
+                                {
+                                    Debug.Log("[DnsDiscovery] REST probe success");
+                                    StatusResultItem item = status.result.FirstOrDefault(x => x.model == "Phone");
+                                    if (item != null)
+                                    {
+                                        deviceName = item.data.device_name;
+                                        Debug.Log($"[DnsDiscovery] REST probe response from: {deviceName}");
+                                    }
+                                }
+                            }
+                            catch (TaskCanceledException e)
+                            {
+                                Debug.Log("[DnsDiscovery] REST probe timeout");
+                                Debug.Log(e.Message);
+                            }
+                        }
+                        if (deviceName != null)
+                        {
+                            if (name == String.Empty || deviceName == name)
+                            {
+                                return ip;
+                            }
                         }
                     }
                 }
@@ -100,6 +138,7 @@ namespace PupilLabs
 
         protected override void DisposeManagedResources()
         {
+            httpClient?.Dispose();
             socket.Close();
         }
     }

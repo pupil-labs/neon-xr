@@ -64,4 +64,24 @@ namespace PupilLabs.Serializable
     {
         public Pose offset;
     }
+
+    [Serializable]
+    public class Status
+    {
+        public string message;
+        public StatusResultItem[] result;
+    }
+
+    [Serializable]
+    public class StatusResultItem
+    {
+        public string model;
+        public StatusData data;
+    }
+
+    [Serializable]
+    public class StatusData
+    {
+        public string device_name;
+    }
 }
