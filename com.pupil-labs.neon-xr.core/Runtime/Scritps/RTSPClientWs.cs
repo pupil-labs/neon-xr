@@ -173,13 +173,13 @@ namespace PupilLabs
             opticalAxisRightBuffer = new Vector3[eyeStateBufferSize];
             eyeStateBufferIndex = eyeStateBufferSize - 1;
 
-            eyelidAngleTopLeftBuffer = new float[eyeStateBufferSize];
-            eyelidAngleBottomLeftBuffer = new float[eyeStateBufferSize];
-            eyelidApertureLeftBuffer = new float[eyeStateBufferSize];
-            eyelidAngleTopRightBuffer = new float[eyeStateBufferSize];
-            eyelidAngleBottomRightBuffer = new float[eyeStateBufferSize];
-            eyelidApertureRightBuffer = new float[eyeStateBufferSize];
-            eyeLidBufferIndex = eyeStateBufferSize - 1;
+            eyelidAngleTopLeftBuffer = new float[eyeLidBufferSize];
+            eyelidAngleBottomLeftBuffer = new float[eyeLidBufferSize];
+            eyelidApertureLeftBuffer = new float[eyeLidBufferSize];
+            eyelidAngleTopRightBuffer = new float[eyeLidBufferSize];
+            eyelidAngleBottomRightBuffer = new float[eyeLidBufferSize];
+            eyelidApertureRightBuffer = new float[eyeLidBufferSize];
+            eyeLidBufferIndex = eyeLidBufferSize - 1;
 
             messageStream = new MemoryStream(messageBuffer, true);
         }
