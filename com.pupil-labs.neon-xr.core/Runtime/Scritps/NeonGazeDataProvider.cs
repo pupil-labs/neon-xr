@@ -25,8 +25,6 @@ namespace PupilLabs
         [SerializeField]
         private Vector3 simulatedRightEyePos = new Vector3(0.032f, -0.02f, -0.02f);
         [SerializeField]
-        private bool simulatEyeLid = false;
-        [SerializeField]
         private float simulatedGazeDistance = 1f;
         [SerializeField]
         private float simulatedPupilDiameter = 0.004f;
@@ -34,8 +32,6 @@ namespace PupilLabs
         private bool gazeSmoothing = true;
         [SerializeField]
         private bool eyeStateSmoothing = true;
-        [SerializeField]
-        private bool eyeLidSmoothing = true;
         [SerializeField]
         private int smoothingWindowSize = 10;
         [SerializeField]
@@ -71,7 +67,7 @@ namespace PupilLabs
                 return;
             }
 
-            using (rtspClient = new RTSPClientWs(storage.Config.rtspSettings, rtspAutoReconnect, smoothingWindowSize, smoothingWindowSize))
+            using (rtspClient = new RTSPClientWs(storage.Config.rtspSettings, rtspAutoReconnect, smoothingWindowSize, smoothingWindowSize, smoothingWindowSize))
             {
                 rtspClient.GazeDataReceived += OnGazeDataReceived;
                 await rtspClient.RunAsync();
@@ -108,7 +104,7 @@ namespace PupilLabs
                     eyeLidAvailable = rtspClient.EyeLidAvailable;
                     if (eyeLidAvailable)
                     {
-                        rawEyeLid = eyeLidSmoothing ? rtspClient.SmoothEyeLid : rtspClient.EyeLid;
+                        rawEyeLid = rtspClient.EyeLid;
                     }
                 }
 
@@ -127,19 +123,6 @@ namespace PupilLabs
                     rawEyeState.eyeballCenterRight = simulatedRightEyePos;
                     rawEyeState.opticalAxisRight = gazePoint - simulatedRightEyePos;
                     rawEyeState.pupilDiameterRight = simulatedPupilDiameter;
-                }
-
-                if (simulationEnabled && simulatEyeLid)
-                {
-                    eyeLidAvailable = true;
-
-                    rawEyeLid.eyelid_angle_top_left = 0;
-                    rawEyeLid.eyelid_angle_bottom_left = 0;
-                    rawEyeLid.eyelid_aperture_left = 0;
-
-                    rawEyeLid.eyelid_angle_top_right = 0;
-                    rawEyeLid.eyelid_angle_bottom_right = 0;
-                    rawEyeLid.eyelid_aperture_right = 0;
                 }
 
                 OnGazeDataReady();

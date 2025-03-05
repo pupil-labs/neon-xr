@@ -6,23 +6,23 @@ namespace PupilLabs
 {
     public struct EyeLid
     {
-        public EyeLid(float tl_angle, float bl_angle, float apl, float tr_angle, float br_angle, float apr)
+        public EyeLid(float tlAngle, float blAngle, float apl, float trAngle, float brAngle, float apr)
         {
-            eyelid_angle_top_left = tl_angle;
-            eyelid_angle_bottom_left = bl_angle;
-            eyelid_aperture_left = apl;
+            eyelidAngleTopLeft = tlAngle;
+            eyelidAngleBottomLeft = blAngle;
+            eyelidApertureLeft = apl;
 
-            eyelid_angle_top_right = tr_angle;
-            eyelid_angle_bottom_right = br_angle;
-            eyelid_aperture_right = apr;
+            eyelidAngleTopRight = trAngle;
+            eyelidAngleBottomRight = brAngle;
+            eyelidApertureRight = apr;
         }
 
-        public float eyelid_angle_top_left;
-        public float eyelid_angle_bottom_left;
-        public float eyelid_aperture_left;
-        public float eyelid_angle_top_right;
-        public float eyelid_angle_bottom_right;
-        public float eyelid_aperture_right;
+        public float eyelidAngleTopLeft;
+        public float eyelidAngleBottomLeft;
+        public float eyelidApertureLeft;
+        public float eyelidAngleTopRight;
+        public float eyelidAngleBottomRight;
+        public float eyelidApertureRight;
     }
 
     public struct EyeState
@@ -60,7 +60,6 @@ namespace PupilLabs
 
         public abstract bool EyeLidAvailable { get; }
         public abstract EyeLid EyeLid { get; }
-        public abstract EyeLid SmoothEyeLid { get; }
         public abstract bool EyeStateAvailable { get; }
         public abstract EyeState EyeState { get; }
         public abstract EyeState SmoothEyeState { get; }

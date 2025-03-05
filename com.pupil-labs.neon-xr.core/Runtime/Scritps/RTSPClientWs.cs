@@ -128,24 +128,6 @@ namespace PupilLabs
             }
         }
 
-        public override EyeLid SmoothEyeLid
-        {
-            get
-            {
-                lock (eyeLidLock)
-                {
-                    eyeLid.eyelid_angle_top_left = eyelidAngleTopLeftBuffer.Average();
-                    eyeLid.eyelid_angle_bottom_left = eyelidAngleBottomLeftBuffer.Average();
-                    eyeLid.eyelid_aperture_left = eyelidApertureLeftBuffer.Average();
-
-                    eyeLid.eyelid_angle_top_right = eyelidAngleTopRightBuffer.Average();
-                    eyeLid.eyelid_angle_bottom_right = eyelidAngleBottomRightBuffer.Average();
-                    eyeLid.eyelid_aperture_right = eyelidApertureRightBuffer.Average();
-                    return eyeLid;
-                }
-            }
-        }
-
         private readonly byte[] receiveBuffer = new byte[4096];
         private readonly byte[] messageBuffer = new byte[8192];
         private readonly MemoryStream messageStream = null;
@@ -157,7 +139,7 @@ namespace PupilLabs
         CancellationToken stopToken;
         CancellationToken stopOrTimeoutToken;
 
-        public RTSPClientWs(RTSPSettings settings, bool autoReconnect = true, int gazePointBufferSize = 5, int eyeStateBufferSize = 5, int eyeLidBufferSize = 5)
+        public RTSPClientWs(RTSPSettings settings, bool autoReconnect = true, int gazePointBufferSize = 5, int eyeStateBufferSize = 5, , int eyeLidBufferSize = 5)
         {
             this.settings = settings;
             this.autoReconnect = autoReconnect;
