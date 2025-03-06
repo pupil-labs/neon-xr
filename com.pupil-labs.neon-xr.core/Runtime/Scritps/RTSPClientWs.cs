@@ -139,7 +139,7 @@ namespace PupilLabs
         CancellationToken stopToken;
         CancellationToken stopOrTimeoutToken;
 
-        public RTSPClientWs(RTSPSettings settings, bool autoReconnect = true, int gazePointBufferSize = 5, int eyeStateBufferSize = 5, , int eyeLidBufferSize = 5)
+        public RTSPClientWs(RTSPSettings settings, bool autoReconnect = true, int gazePointBufferSize = 5, int eyeStateBufferSize = 5, int eyeLidBufferSize = 5)
         {
             this.settings = settings;
             this.autoReconnect = autoReconnect;
