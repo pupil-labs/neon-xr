@@ -4,9 +4,9 @@ using UnityEngine;
 
 namespace PupilLabs
 {
-    public struct EyeLid
+    public struct Eyelid
     {
-        public EyeLid(float tlAngle, float blAngle, float apl, float trAngle, float brAngle, float apr)
+        public Eyelid(float tlAngle, float blAngle, float apl, float trAngle, float brAngle, float apr)
         {
             eyelidAngleTopLeft = tlAngle;
             eyelidAngleBottomLeft = blAngle;
@@ -58,8 +58,9 @@ namespace PupilLabs
         public abstract Vector2 GazePoint { get; }
         public abstract Vector2 SmoothGazePoint { get; }
 
-        public abstract bool EyeLidAvailable { get; }
-        public abstract EyeLid EyeLid { get; }
+        public abstract bool EyelidAvailable { get; }
+        public abstract Eyelid Eyelid { get; }
+        public abstract Eyelid SmoothEyelid { get; }
         public abstract bool EyeStateAvailable { get; }
         public abstract EyeState EyeState { get; }
         public abstract EyeState SmoothEyeState { get; }

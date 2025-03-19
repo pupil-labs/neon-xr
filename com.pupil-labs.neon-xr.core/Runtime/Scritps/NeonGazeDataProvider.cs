@@ -31,9 +31,15 @@ namespace PupilLabs
         [SerializeField]
         private bool gazeSmoothing = true;
         [SerializeField]
+        private int gazeSmoothingWindowSize = 10;
+        [SerializeField]
         private bool eyeStateSmoothing = true;
         [SerializeField]
-        private int smoothingWindowSize = 10;
+        private int eyeStateSmoothingWindowSize = 10;
+        [SerializeField]
+        private bool eyelidSmoothing = true;
+        [SerializeField]
+        private int eyelidSmoothingWindowSize = 10;
         [SerializeField]
         private bool rtspAutoReconnect = true;
 
@@ -48,10 +54,10 @@ namespace PupilLabs
         private bool eyeStateAvailable = false;
         public override EyeState RawEyeState { get { return rawEyeState; } }
         private EyeState rawEyeState;
-        public override bool EyeLidAvailable { get { return eyeLidAvailable; } }
-        private bool eyeLidAvailable = false;
-        public override EyeLid RawEyeLid { get { return rawEyeLid; } }
-        private EyeLid rawEyeLid;
+        public override bool EyelidAvailable { get { return eyelidAvailable; } }
+        private bool eyelidAvailable = false;
+        public override Eyelid RawEyelid { get { return rawEyelid; } }
+        private Eyelid rawEyelid;
 
 
         private async void Awake()
@@ -67,7 +73,7 @@ namespace PupilLabs
                 return;
             }
 
-            using (rtspClient = new RTSPClientWs(storage.Config.rtspSettings, rtspAutoReconnect, smoothingWindowSize, smoothingWindowSize, smoothingWindowSize))
+            using (rtspClient = new RTSPClientWs(storage.Config.rtspSettings, rtspAutoReconnect, gazeSmoothingWindowSize, eyeStateSmoothingWindowSize, eyelidSmoothingWindowSize))
             {
                 rtspClient.GazeDataReceived += OnGazeDataReceived;
                 await rtspClient.RunAsync();
@@ -101,10 +107,10 @@ namespace PupilLabs
                         rawEyeState = eyeStateSmoothing ? rtspClient.SmoothEyeState : rtspClient.EyeState;
                     }
 
-                    eyeLidAvailable = rtspClient.EyeLidAvailable;
-                    if (eyeLidAvailable)
+                    eyelidAvailable = rtspClient.EyelidAvailable;
+                    if (eyelidAvailable)
                     {
-                        rawEyeLid = rtspClient.EyeLid;
+                        rawEyelid = eyelidSmoothing ? rtspClient.SmoothEyelid : rtspClient.Eyelid;
                     }
                 }
 
