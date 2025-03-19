@@ -31,7 +31,12 @@ namespace PupilLabs
         {
             get
             {
-                return RawEyelid;
+                Eyelid lid = RawEyelid;
+                lid.eyelidAngleBottomLeft *= Mathf.Rad2Deg;
+                lid.eyelidAngleTopLeft *= Mathf.Rad2Deg;
+                lid.eyelidAngleBottomRight *= Mathf.Rad2Deg;
+                lid.eyelidAngleTopRight *= Mathf.Rad2Deg;
+                return lid;
             }
         }
 
