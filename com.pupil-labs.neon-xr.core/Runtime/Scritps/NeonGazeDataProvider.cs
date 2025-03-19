@@ -31,15 +31,15 @@ namespace PupilLabs
         [SerializeField]
         private bool gazeSmoothing = true;
         [SerializeField]
-        private int gazeSmoothingWindowSize = 10;
+        private int gazeSmoothingWindowSize = 5;
         [SerializeField]
         private bool eyeStateSmoothing = true;
         [SerializeField]
-        private int eyeStateSmoothingWindowSize = 10;
+        private int eyeStateSmoothingWindowSize = 5;
         [SerializeField]
         private bool eyelidSmoothing = true;
         [SerializeField]
-        private int eyelidSmoothingWindowSize = 10;
+        private int eyelidSmoothingWindowSize = 5;
         [SerializeField]
         private bool rtspAutoReconnect = true;
 
