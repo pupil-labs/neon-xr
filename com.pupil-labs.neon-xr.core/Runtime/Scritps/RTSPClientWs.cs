@@ -17,11 +17,14 @@ namespace PupilLabs
         private readonly bool autoReconnect;
         private readonly object gazePointLock = new object();
         private readonly object eyeStateLock = new object();
+        private readonly object eyeLidLock = new object();
         private int gazePointBufferIndex;
         private int eyeStateBufferIndex;
+        private int eyeLidBufferIndex;
         private Vector2[] gazePointBuffer;
 
         private volatile bool eyeStateAvailable = false;
+        private volatile bool eyeLidAvailable = false;
 
         private EyeState eyeState = new EyeState();
         private Vector3[] eyeballCenterLeftBuffer;
@@ -30,6 +33,14 @@ namespace PupilLabs
         private Vector3[] eyeballCenterRightBuffer;
         private Vector3[] opticalAxisRightBuffer;
         private float[] pupilDiameterRightBuffer;
+
+        private EyeLid eyeLid = new EyeLid();
+        private float[] eyelidAngleTopLeftBuffer;
+        private float[] eyelidAngleBottomLeftBuffer;
+        private float[] eyelidApertureLeftBuffer;
+        private float[] eyelidAngleTopRightBuffer;
+        private float[] eyelidAngleBottomRightBuffer;
+        private float[] eyelidApertureRightBuffer;
 
         public override Vector2 GazePoint
         {
@@ -94,6 +105,29 @@ namespace PupilLabs
             }
         }
 
+        public override bool EyeLidAvailable
+        {
+            get { return eyeLidAvailable; }
+        }
+
+        public override EyeLid EyeLid
+        {
+            get
+            {
+                lock (eyeLidLock)
+                {
+                    eyeLid.eyelid_angle_top_left = eyelidAngleTopLeftBuffer[eyeLidBufferIndex];
+                    eyeLid.eyelid_angle_bottom_left = eyelidAngleBottomLeftBuffer[eyeLidBufferIndex];
+                    eyeLid.eyelid_aperture_left = eyelidApertureLeftBuffer[eyeLidBufferIndex];
+
+                    eyeLid.eyelid_angle_top_right = eyelidAngleTopRightBuffer[eyeLidBufferIndex];
+                    eyeLid.eyelid_angle_bottom_right = eyelidAngleBottomRightBuffer[eyeLidBufferIndex];
+                    eyeLid.eyelid_aperture_right = eyelidApertureRightBuffer[eyeLidBufferIndex];
+                    return eyeLid;
+                }
+            }
+        }
+
         private readonly byte[] receiveBuffer = new byte[4096];
         private readonly byte[] messageBuffer = new byte[8192];
         private readonly MemoryStream messageStream = null;
@@ -105,7 +139,7 @@ namespace PupilLabs
         CancellationToken stopToken;
         CancellationToken stopOrTimeoutToken;
 
-        public RTSPClientWs(RTSPSettings settings, bool autoReconnect = true, int gazePointBufferSize = 5, int eyeStateBufferSize = 5)
+        public RTSPClientWs(RTSPSettings settings, bool autoReconnect = true, int gazePointBufferSize = 5, int eyeStateBufferSize = 5, int eyeLidBufferSize = 5)
         {
             this.settings = settings;
             this.autoReconnect = autoReconnect;
@@ -120,6 +154,14 @@ namespace PupilLabs
             eyeballCenterRightBuffer = new Vector3[eyeStateBufferSize];
             opticalAxisRightBuffer = new Vector3[eyeStateBufferSize];
             eyeStateBufferIndex = eyeStateBufferSize - 1;
+
+            eyelidAngleTopLeftBuffer = new float[eyeLidBufferSize];
+            eyelidAngleBottomLeftBuffer = new float[eyeLidBufferSize];
+            eyelidApertureLeftBuffer = new float[eyeLidBufferSize];
+            eyelidAngleTopRightBuffer = new float[eyeLidBufferSize];
+            eyelidAngleBottomRightBuffer = new float[eyeLidBufferSize];
+            eyelidApertureRightBuffer = new float[eyeLidBufferSize];
+            eyeLidBufferIndex = eyeLidBufferSize - 1;
 
             messageStream = new MemoryStream(messageBuffer, true);
         }
@@ -272,14 +314,14 @@ namespace PupilLabs
                     timeoutCts.CancelAfter(readTimeout);
                     bool binaryMessageReceived = await ReceiveMessageAsync(ws, timeoutToken);
                     timeoutCts.CancelAfter(Timeout.Infinite);
-                    if (binaryMessageReceived && (messageStream.Length == 21 || messageStream.Length == 29 || messageStream.Length == 77) && GetRTPType(messageBuffer) == 99)
+                    if (binaryMessageReceived && (messageStream.Length == 21 || messageStream.Length == 29 || messageStream.Length == 77 || messageStream.Length == 101) && GetRTPType(messageBuffer) == 99)
                     {
                         gazePointBufferIndex = ++gazePointBufferIndex % gazePointBuffer.Length;
                         lock (gazePointLock)
                         {
                             DecodeGazePoint(messageBuffer, ref gazePointBuffer[gazePointBufferIndex]);
                         }
-                        if (messageStream.Length == 77)
+                        if (messageStream.Length == 77 || messageStream.Length == 101)
                         {
                             eyeStateAvailable = true;
                             eyeStateBufferIndex = ++eyeStateBufferIndex % pupilDiameterLeftBuffer.Length;
@@ -293,6 +335,23 @@ namespace PupilLabs
                                     ref pupilDiameterRightBuffer[eyeStateBufferIndex],
                                     ref eyeballCenterRightBuffer[eyeStateBufferIndex],
                                     ref opticalAxisRightBuffer[eyeStateBufferIndex]
+                                );
+                            }
+                        }
+                        if (messageStream.Length == 101)
+                        {
+                            eyeLidAvailable = true;
+                            eyeLidBufferIndex = ++eyeLidBufferIndex % eyelidAngleTopLeftBuffer.Length;
+                            lock (eyeLidLock)
+                            {
+                                DecodeEyeLid(
+                                    messageBuffer,
+                                    ref eyelidAngleTopLeftBuffer[eyeLidBufferIndex],
+                                    ref eyelidAngleBottomLeftBuffer[eyeLidBufferIndex],
+                                    ref eyelidApertureLeftBuffer[eyeLidBufferIndex],
+                                    ref eyelidAngleTopRightBuffer[eyeLidBufferIndex],
+                                    ref eyelidAngleBottomRightBuffer[eyeLidBufferIndex],
+                                    ref eyelidApertureRightBuffer[eyeLidBufferIndex]
                                 );
                             }
                         }
@@ -363,6 +422,17 @@ namespace PupilLabs
             oar.z = BitConverter.ToSingle(NetworkUtils.NetworkBytesToLocal(bytes, 73, sizeof(float)), 0) * scale;
         }
 
+        private void DecodeEyeLid(byte[] bytes, ref float tl_angle, ref float bl_angle, ref float apl, ref float tr_angle, ref float br_angle, ref float apr, float scale = 0.001f)
+        {
+            tl_angle = BitConverter.ToSingle(NetworkUtils.NetworkBytesToLocal(bytes, 77, sizeof(float)), 0);
+            bl_angle = BitConverter.ToSingle(NetworkUtils.NetworkBytesToLocal(bytes, 81, sizeof(float)), 0);
+            apl = BitConverter.ToSingle(NetworkUtils.NetworkBytesToLocal(bytes, 85, sizeof(float)), 0) * scale;
+
+            tr_angle = BitConverter.ToSingle(NetworkUtils.NetworkBytesToLocal(bytes, 89, sizeof(float)), 0);
+            br_angle = BitConverter.ToSingle(NetworkUtils.NetworkBytesToLocal(bytes, 93, sizeof(float)), 0);
+            apr = BitConverter.ToSingle(NetworkUtils.NetworkBytesToLocal(bytes, 97, sizeof(float)), 0) * scale;
+        }
+
         private async Task SendMessageAsync(ClientWebSocket ws, string message, CancellationToken cancellationToken)
         {
             await ws.SendAsync(Encoding.UTF8.GetBytes(message), WebSocketMessageType.Binary, true, cancellationToken);
@@ -381,7 +451,7 @@ namespace PupilLabs
 
         private async Task<bool> ReceiveMessageAsync(ClientWebSocket ws, CancellationToken cancellationToken)
         {
-            //Exactly one send and one receive is supported in parallel, ClientWebSocket has the same restriction 
+            //Exactly one send and one receive is supported in parallel, ClientWebSocket has the same restriction
             messageStream.SetLength(0);
             WebSocketReceiveResult result;
             do

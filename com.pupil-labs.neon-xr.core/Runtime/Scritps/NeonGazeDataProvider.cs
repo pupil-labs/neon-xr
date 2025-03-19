@@ -48,6 +48,11 @@ namespace PupilLabs
         private bool eyeStateAvailable = false;
         public override EyeState RawEyeState { get { return rawEyeState; } }
         private EyeState rawEyeState;
+        public override bool EyeLidAvailable { get { return eyeLidAvailable; } }
+        private bool eyeLidAvailable = false;
+        public override EyeLid RawEyeLid { get { return rawEyeLid; } }
+        private EyeLid rawEyeLid;
+
 
         private async void Awake()
         {
@@ -62,7 +67,7 @@ namespace PupilLabs
                 return;
             }
 
-            using (rtspClient = new RTSPClientWs(storage.Config.rtspSettings, rtspAutoReconnect, smoothingWindowSize, smoothingWindowSize))
+            using (rtspClient = new RTSPClientWs(storage.Config.rtspSettings, rtspAutoReconnect, smoothingWindowSize, smoothingWindowSize, smoothingWindowSize))
             {
                 rtspClient.GazeDataReceived += OnGazeDataReceived;
                 await rtspClient.RunAsync();
@@ -94,6 +99,12 @@ namespace PupilLabs
                     if (eyeStateAvailable)
                     {
                         rawEyeState = eyeStateSmoothing ? rtspClient.SmoothEyeState : rtspClient.EyeState;
+                    }
+
+                    eyeLidAvailable = rtspClient.EyeLidAvailable;
+                    if (eyeLidAvailable)
+                    {
+                        rawEyeLid = rtspClient.EyeLid;
                     }
                 }
 

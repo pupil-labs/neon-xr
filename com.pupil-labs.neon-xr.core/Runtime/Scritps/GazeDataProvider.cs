@@ -8,6 +8,8 @@ namespace PupilLabs
         public abstract Vector2 RawGazePoint { get; }
         public abstract bool EyeStateAvailable { get; }
         public abstract EyeState RawEyeState { get; }
+        public abstract bool EyeLidAvailable { get; }
+        public abstract EyeLid RawEyeLid { get; }
 
         public Pose GazeOrigin { get { return gazeOrigin; } }
         protected Pose gazeOrigin;
@@ -23,6 +25,13 @@ namespace PupilLabs
                 state.eyeballCenterRight = gazeOrigin.rotation * state.eyeballCenterRight + gazeOrigin.position;
                 state.opticalAxisRight = gazeOrigin.rotation * state.opticalAxisRight;
                 return state;
+            }
+        }
+        public virtual EyeLid EyeLid
+        {
+            get
+            {
+                return RawEyeLid;
             }
         }
 
