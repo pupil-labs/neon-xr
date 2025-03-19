@@ -51,8 +51,12 @@ MonoBehaviour:
   reference: {fileID: 7628671963650923929}
   leftEye: {fileID: 7628671965370497874}
   leftPupil: {fileID: 7628671964646438384}
+  leftEyelidTop: {fileID: 2506189933740872320}
+  leftEyelidBottom: {fileID: 312136504286990293}
   rightEye: {fileID: 7590582971158407501}
   rightPupil: {fileID: 7590582970744727535}
+  rightEyelidTop: {fileID: 2472071791735849119}
+  rightEyelidBottom: {fileID: 350638906234920394}
 --- !u!1 &7628671965460449080
 GameObject:
   m_ObjectHideFlags: 0
@@ -207,6 +211,16 @@ PrefabInstance:
       objectReference: {fileID: 0}
     m_RemovedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 63d8dfc6e83f65949a8202c82630cb22, type: 3}
+--- !u!4 &350638906234920394 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 5381790526440911511, guid: 63d8dfc6e83f65949a8202c82630cb22, type: 3}
+  m_PrefabInstance: {fileID: 5652665979843571549}
+  m_PrefabAsset: {fileID: 0}
+--- !u!4 &2472071791735849119 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 7799352678083932098, guid: 63d8dfc6e83f65949a8202c82630cb22, type: 3}
+  m_PrefabInstance: {fileID: 5652665979843571549}
+  m_PrefabAsset: {fileID: 0}
 --- !u!4 &7590582970744727535 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 2820774252164974770, guid: 63d8dfc6e83f65949a8202c82630cb22, type: 3}
@@ -274,6 +288,16 @@ PrefabInstance:
       objectReference: {fileID: 0}
     m_RemovedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 63d8dfc6e83f65949a8202c82630cb22, type: 3}
+--- !u!4 &312136504286990293 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 5381790526440911511, guid: 63d8dfc6e83f65949a8202c82630cb22, type: 3}
+  m_PrefabInstance: {fileID: 5691172822817701186}
+  m_PrefabAsset: {fileID: 0}
+--- !u!4 &2506189933740872320 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 7799352678083932098, guid: 63d8dfc6e83f65949a8202c82630cb22, type: 3}
+  m_PrefabInstance: {fileID: 5691172822817701186}
+  m_PrefabAsset: {fileID: 0}
 --- !u!4 &7628671964646438384 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 2820774252164974770, guid: 63d8dfc6e83f65949a8202c82630cb22, type: 3}
