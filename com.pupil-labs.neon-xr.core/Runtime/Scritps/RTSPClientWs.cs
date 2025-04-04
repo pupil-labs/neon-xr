@@ -149,9 +149,7 @@ namespace PupilLabs
         private readonly byte[] receiveBuffer = new byte[4096];
         private readonly byte[] messageBuffer = new byte[8192];
         private readonly MemoryStream messageStream = null;
-        private DnsDiscovery dnsDiscovery = null;
 
-        CancellationTokenSource stopCts;
         CancellationTokenSource timeoutCts;
         CancellationToken timeoutToken;
         CancellationToken stopToken;
@@ -189,6 +187,9 @@ namespace PupilLabs
             string ip = settings.ip;
             int port = settings.port;
             int dnsPort = settings.dnsPort;
+            bool autoIp = settings.autoIp;
+            string deviceName = settings.deviceName;
+            //freeze values for reconnect
 
             using (stopCts = new CancellationTokenSource())
             {
@@ -201,34 +202,20 @@ namespace PupilLabs
                         stopOrTimeoutToken = stopOrTimeoutCts.Token;
                         timeoutToken = timeoutCts.Token;
 
-                        if (settings.autoIp)
+                        if (autoIp)
                         {
-                            try
+                            string discovered = await TryDiscoverOneDevice(dnsPort, deviceName);
+                            if (discovered != null)
                             {
-                                IPAddress[] localIps = NetworkUtils.GetLocalIPAddresses();
-                                foreach (var localIp in localIps)
-                                {
-                                    Debug.Log($"[RTSPClientWs] trying local ip: {localIp}");
-                                    using (dnsDiscovery = new DnsDiscovery(localIp, dnsPort))
-                                    {
-                                        IPAddress deviceIp = await dnsDiscovery.DiscoverOneDevice(settings.deviceName);
-                                        if (deviceIp != null)
-                                        {
-                                            Debug.Log("[RTSPClientWs] device found");
-                                            ip = deviceIp.ToString();
-                                            break;
-                                        }
-                                    }
-                                }
+                                ip = discovered;
                             }
-                            catch (ObjectDisposedException e)
+                            else
                             {
-                                Debug.Log("[RTSPClientWs] device discovery aborted, using fallback ip from config.json");
-                                Debug.Log(e.Message);
+                                Debug.Log("[RTSPClientWs] no device discovered, using fallback ip");
                             }
                         }
 
-                        Debug.Log($"[RTSPClientWs] using ip: {ip} port: {settings.port}");
+                        Debug.Log($"[RTSPClientWs] using ip: {ip} port: {port}");
                         try
                         {
                             string url = $"rtsp://{ip}:{port}";
@@ -265,19 +252,6 @@ namespace PupilLabs
                         }
                     }
                 }
-            }
-        }
-
-        public override void Stop()
-        {
-            try
-            {
-                stopCts.Cancel();
-                dnsDiscovery.Abort();
-            }
-            catch (ObjectDisposedException e)
-            {
-                Debug.Log(e.Message);
             }
         }
 
@@ -324,6 +298,7 @@ namespace PupilLabs
         {
             int msgCounter = 0;
             int msgsPerLog = 2000;
+            int dataOffset = 12;
             //read data (mixed)
             await Task.Run(async () =>
             {
@@ -337,7 +312,7 @@ namespace PupilLabs
                         gazePointBufferIndex = ++gazePointBufferIndex % gazePointBuffer.Length;
                         lock (gazePointLock)
                         {
-                            DecodeGazePoint(messageBuffer, ref gazePointBuffer[gazePointBufferIndex]);
+                            DataUtils.DecodeGazePoint(messageBuffer, ref gazePointBuffer[gazePointBufferIndex], dataOffset);
                         }
                         if (messageStream.Length == 77 || messageStream.Length == 101)
                         {
@@ -345,14 +320,15 @@ namespace PupilLabs
                             eyeStateBufferIndex = ++eyeStateBufferIndex % pupilDiameterLeftBuffer.Length;
                             lock (eyeStateLock)
                             {
-                                DecodeEyeState(
+                                DataUtils.DecodeEyeState(
                                     messageBuffer,
                                     ref pupilDiameterLeftBuffer[eyeStateBufferIndex],
                                     ref eyeballCenterLeftBuffer[eyeStateBufferIndex],
                                     ref opticalAxisLeftBuffer[eyeStateBufferIndex],
                                     ref pupilDiameterRightBuffer[eyeStateBufferIndex],
                                     ref eyeballCenterRightBuffer[eyeStateBufferIndex],
-                                    ref opticalAxisRightBuffer[eyeStateBufferIndex]
+                                    ref opticalAxisRightBuffer[eyeStateBufferIndex],
+                                    dataOffset
                                 );
                             }
 
@@ -362,14 +338,15 @@ namespace PupilLabs
                                 eyelidBufferIndex = ++eyelidBufferIndex % eyelidAngleTopLeftBuffer.Length;
                                 lock (eyelidLock)
                                 {
-                                    DecodeEyelid(
+                                    DataUtils.DecodeEyelid(
                                         messageBuffer,
                                         ref eyelidAngleTopLeftBuffer[eyelidBufferIndex],
                                         ref eyelidAngleBottomLeftBuffer[eyelidBufferIndex],
                                         ref eyelidApertureLeftBuffer[eyelidBufferIndex],
                                         ref eyelidAngleTopRightBuffer[eyelidBufferIndex],
                                         ref eyelidAngleBottomRightBuffer[eyelidBufferIndex],
-                                        ref eyelidApertureRightBuffer[eyelidBufferIndex]
+                                        ref eyelidApertureRightBuffer[eyelidBufferIndex],
+                                        dataOffset
                                     );
                                 }
                             }
@@ -414,42 +391,6 @@ namespace PupilLabs
         private int GetRTPType(byte[] bytes)
         {
             return bytes[1] & 127;
-        }
-
-        private void DecodeGazePoint(byte[] bytes, ref Vector2 gp)
-        {
-            gp.x = BitConverter.ToSingle(NetworkUtils.NetworkBytesToLocal(bytes, 12, sizeof(float)), 0);
-            gp.y = BitConverter.ToSingle(NetworkUtils.NetworkBytesToLocal(bytes, 16, sizeof(float)), 0);
-        }
-
-        private void DecodeEyeState(byte[] bytes, ref float pdl, ref Vector3 ecl, ref Vector3 oal, ref float pdr, ref Vector3 ecr, ref Vector3 oar, float scale = 0.001f)
-        {
-            pdl = BitConverter.ToSingle(NetworkUtils.NetworkBytesToLocal(bytes, 21, sizeof(float)), 0) * scale;
-            ecl.x = BitConverter.ToSingle(NetworkUtils.NetworkBytesToLocal(bytes, 25, sizeof(float)), 0) * scale;
-            ecl.y = -BitConverter.ToSingle(NetworkUtils.NetworkBytesToLocal(bytes, 29, sizeof(float)), 0) * scale;
-            ecl.z = BitConverter.ToSingle(NetworkUtils.NetworkBytesToLocal(bytes, 33, sizeof(float)), 0) * scale;
-            oal.x = BitConverter.ToSingle(NetworkUtils.NetworkBytesToLocal(bytes, 37, sizeof(float)), 0) * scale;
-            oal.y = -BitConverter.ToSingle(NetworkUtils.NetworkBytesToLocal(bytes, 41, sizeof(float)), 0) * scale;
-            oal.z = BitConverter.ToSingle(NetworkUtils.NetworkBytesToLocal(bytes, 45, sizeof(float)), 0) * scale;
-
-            pdr = BitConverter.ToSingle(NetworkUtils.NetworkBytesToLocal(bytes, 49, sizeof(float)), 0) * scale;
-            ecr.x = BitConverter.ToSingle(NetworkUtils.NetworkBytesToLocal(bytes, 53, sizeof(float)), 0) * scale;
-            ecr.y = -BitConverter.ToSingle(NetworkUtils.NetworkBytesToLocal(bytes, 57, sizeof(float)), 0) * scale;
-            ecr.z = BitConverter.ToSingle(NetworkUtils.NetworkBytesToLocal(bytes, 61, sizeof(float)), 0) * scale;
-            oar.x = BitConverter.ToSingle(NetworkUtils.NetworkBytesToLocal(bytes, 65, sizeof(float)), 0) * scale;
-            oar.y = -BitConverter.ToSingle(NetworkUtils.NetworkBytesToLocal(bytes, 69, sizeof(float)), 0) * scale;
-            oar.z = BitConverter.ToSingle(NetworkUtils.NetworkBytesToLocal(bytes, 73, sizeof(float)), 0) * scale;
-        }
-
-        private void DecodeEyelid(byte[] bytes, ref float tlAngle, ref float blAngle, ref float apl, ref float trAngle, ref float brAngle, ref float apr, float scale = 0.001f)
-        {
-            tlAngle = BitConverter.ToSingle(NetworkUtils.NetworkBytesToLocal(bytes, 77, sizeof(float)), 0);
-            blAngle = BitConverter.ToSingle(NetworkUtils.NetworkBytesToLocal(bytes, 81, sizeof(float)), 0);
-            apl = BitConverter.ToSingle(NetworkUtils.NetworkBytesToLocal(bytes, 85, sizeof(float)), 0) * scale;
-
-            trAngle = BitConverter.ToSingle(NetworkUtils.NetworkBytesToLocal(bytes, 89, sizeof(float)), 0);
-            brAngle = BitConverter.ToSingle(NetworkUtils.NetworkBytesToLocal(bytes, 93, sizeof(float)), 0);
-            apr = BitConverter.ToSingle(NetworkUtils.NetworkBytesToLocal(bytes, 97, sizeof(float)), 0) * scale;
         }
 
         private async Task SendMessageAsync(ClientWebSocket ws, string message, CancellationToken cancellationToken)

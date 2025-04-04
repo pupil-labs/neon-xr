@@ -55,6 +55,7 @@ namespace PupilLabs.Serializable
         public bool autoIp;
         public string deviceName;
         public string ip;
+        public bool useUdp;
         public int port;
         public int dnsPort;
     }

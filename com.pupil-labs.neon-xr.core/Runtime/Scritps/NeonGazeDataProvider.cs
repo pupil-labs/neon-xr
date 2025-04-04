@@ -1,6 +1,7 @@
 using System;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using static UnityEngine.UIElements.UxmlAttributeDescription;
 
 namespace PupilLabs
 {
@@ -73,7 +74,11 @@ namespace PupilLabs
                 return;
             }
 
-            using (rtspClient = new RTSPClientWs(storage.Config.rtspSettings, rtspAutoReconnect, gazeSmoothingWindowSize, eyeStateSmoothingWindowSize, eyelidSmoothingWindowSize))
+            using (
+                rtspClient = storage.Config.rtspSettings.useUdp ?
+                    new RTSPClientLive555(storage.Config.rtspSettings) :
+                    new RTSPClientWs(storage.Config.rtspSettings, rtspAutoReconnect, gazeSmoothingWindowSize, eyeStateSmoothingWindowSize, eyelidSmoothingWindowSize)
+            )
             {
                 rtspClient.GazeDataReceived += OnGazeDataReceived;
                 await rtspClient.RunAsync();
