@@ -80,6 +80,7 @@ namespace PupilLabs
                                 httpClient = new HttpClient();
                                 httpClient.Timeout = TimeSpan.FromMilliseconds(1000);
                             }
+
                             try
                             {
                                 string result = await httpClient.GetStringAsync($"http://{ip}:8080/api/status");
@@ -96,10 +97,17 @@ namespace PupilLabs
                                     }
                                 }
                             }
-                            catch (TaskCanceledException e)
+                            catch (Exception e)
                             {
-                                Debug.Log("[DnsDiscovery] REST probe timeout");
-                                Debug.Log(e.Message);
+                                if (e is TaskCanceledException || e is HttpRequestException)
+                                {
+                                    Debug.Log("[DnsDiscovery] REST probe timeout");
+                                    Debug.Log(e.Message);
+                                }
+                                else
+                                {
+                                    throw;
+                                }
                             }
                         }
                         if (deviceName != null)
