@@ -1,7 +1,9 @@
+using PupilLabs.Serializable;
 using System;
+using System.Net;
+using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.InputSystem;
-using static UnityEngine.UIElements.UxmlAttributeDescription;
 
 namespace PupilLabs
 {
@@ -44,6 +46,7 @@ namespace PupilLabs
         [SerializeField]
         private bool rtspAutoReconnect = true;
 
+        private DnsDiscovery dnsDiscovery = null;
         private RTSPClient rtspClient;
         private volatile bool dataReceived = false;
 
@@ -74,14 +77,33 @@ namespace PupilLabs
                 return;
             }
 
-            using (
-                rtspClient = storage.Config.rtspSettings.useUdp ?
-                    new RTSPClientLive555(storage.Config.rtspSettings) :
-                    new RTSPClientWs(storage.Config.rtspSettings, rtspAutoReconnect, gazeSmoothingWindowSize, eyeStateSmoothingWindowSize, eyelidSmoothingWindowSize)
-            )
+            while (rtspAutoReconnect == true)
             {
-                rtspClient.GazeDataReceived += OnGazeDataReceived;
-                await rtspClient.RunAsync();
+                RTSPSettings rtspSettings = storage.Config.rtspSettings;
+                string ip = rtspSettings.ip;
+                if (rtspSettings.autoIp)
+                {
+                    string discovered = await TryDiscoverOneDevice(rtspSettings.dnsPort, rtspSettings.deviceName);
+                    if (discovered != null)
+                    {
+                        ip = discovered;
+                    }
+                    else
+                    {
+                        Debug.Log("[NeonGazeDataProvider] no device discovered, using fallback ip");
+                    }
+                }
+
+                using (
+                    rtspClient = rtspSettings.useUdp ?
+                        new RTSPClientLive555(ip, rtspSettings.port) :
+                        new RTSPClientWs(ip, rtspSettings.port, gazeSmoothingWindowSize, eyeStateSmoothingWindowSize, eyelidSmoothingWindowSize)
+                )
+                {
+                    rtspClient.GazeDataReceived += OnGazeDataReceived;
+                    await rtspClient.RunAsync();
+                }
+                rtspClient = null;
             }
         }
 
@@ -142,10 +164,39 @@ namespace PupilLabs
 
         private void OnDestroy()
         {
-            if (rtspClient != null)
+            rtspAutoReconnect = false;
+            dnsDiscovery?.Abort();
+            rtspClient?.Stop();
+        }
+
+        private async Task<string> TryDiscoverOneDevice(int dnsPort, string deviceName = "")
+        {
+            string ip = null;
+            try
             {
-                rtspClient.Stop();
+                IPAddress[] localIps = NetworkUtils.GetLocalIPAddresses();
+                foreach (var localIp in localIps)
+                {
+                    Debug.Log($"[RTSPClient] trying local ip: {localIp}");
+                    using (dnsDiscovery = new DnsDiscovery(localIp, dnsPort))
+                    {
+                        IPAddress deviceIp = await dnsDiscovery.DiscoverOneDevice(deviceName);
+                        if (deviceIp != null)
+                        {
+                            Debug.Log("[RTSPClient] device found");
+                            ip = deviceIp.ToString();
+                            break;
+                        }
+                    }
+                    dnsDiscovery = null;
+                }
             }
+            catch (ObjectDisposedException e)
+            {
+                Debug.Log("[RTSPClient] device discovery aborted");
+                Debug.Log(e.Message);
+            }
+            return ip;
         }
     }
 }

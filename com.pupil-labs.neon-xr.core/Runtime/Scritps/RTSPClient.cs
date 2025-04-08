@@ -1,5 +1,4 @@
 using System;
-using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
 using UnityEngine;
@@ -53,7 +52,6 @@ namespace PupilLabs
     {
         public event EventHandler GazeDataReceived;
 
-        protected DnsDiscovery dnsDiscovery = null;
         protected CancellationTokenSource stopCts = null;
 
         public abstract Task RunAsync();
@@ -73,7 +71,6 @@ namespace PupilLabs
             try
             {
                 stopCts?.Cancel();
-                dnsDiscovery?.Abort();
             }
             catch (ObjectDisposedException e)
             {
@@ -84,35 +81,6 @@ namespace PupilLabs
         protected virtual void OnGazeDataReceived()
         {
             GazeDataReceived?.Invoke(this, EventArgs.Empty);
-        }
-
-        protected virtual async Task<string> TryDiscoverOneDevice(int dnsPort, string deviceName = "")
-        {
-            string ip = null;
-            try
-            {
-                IPAddress[] localIps = NetworkUtils.GetLocalIPAddresses();
-                foreach (var localIp in localIps)
-                {
-                    Debug.Log($"[RTSPClient] trying local ip: {localIp}");
-                    using (dnsDiscovery = new DnsDiscovery(localIp, dnsPort))
-                    {
-                        IPAddress deviceIp = await dnsDiscovery.DiscoverOneDevice(deviceName);
-                        if (deviceIp != null)
-                        {
-                            Debug.Log("[RTSPClient] device found");
-                            ip = deviceIp.ToString();
-                            break;
-                        }
-                    }
-                }
-            }
-            catch (ObjectDisposedException e)
-            {
-                Debug.Log("[RTSPClient] device discovery aborted");
-                Debug.Log(e.Message);
-            }
-            return ip;
         }
     }
 }

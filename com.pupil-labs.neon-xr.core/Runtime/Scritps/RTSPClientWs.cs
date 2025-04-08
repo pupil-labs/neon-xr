@@ -6,15 +6,13 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using UnityEngine;
-using PupilLabs.Serializable;
-using System.Net;
 
 namespace PupilLabs
 {
     public class RTSPClientWs : RTSPClient
     {
-        private readonly RTSPSettings settings;
-        private readonly bool autoReconnect;
+        private readonly string ip;
+        private readonly int port;
         private readonly object gazePointLock = new object();
         private readonly object eyeStateLock = new object();
         private readonly object eyelidLock = new object();
@@ -155,10 +153,10 @@ namespace PupilLabs
         CancellationToken stopToken;
         CancellationToken stopOrTimeoutToken;
 
-        public RTSPClientWs(RTSPSettings settings, bool autoReconnect = true, int gazePointBufferSize = 5, int eyeStateBufferSize = 5, int eyelidBufferSize = 5)
+        public RTSPClientWs(string ip, int port, int gazePointBufferSize = 5, int eyeStateBufferSize = 5, int eyelidBufferSize = 5)
         {
-            this.settings = settings;
-            this.autoReconnect = autoReconnect;
+            this.ip = ip;
+            this.port = port;
 
             gazePointBuffer = new Vector2[gazePointBufferSize];
             gazePointBufferIndex = gazePointBufferSize - 1;
@@ -184,41 +182,20 @@ namespace PupilLabs
 
         public override async Task RunAsync()
         {
-            string ip = settings.ip;
-            int port = settings.port;
-            int dnsPort = settings.dnsPort;
-            bool autoIp = settings.autoIp;
-            string deviceName = settings.deviceName;
-            //freeze values for reconnect
-
             using (stopCts = new CancellationTokenSource())
             {
                 stopToken = stopCts.Token;
-                while (stopToken.IsCancellationRequested == false)
+                using (timeoutCts = new CancellationTokenSource())
                 {
-                    using (timeoutCts = new CancellationTokenSource())
-                    using (CancellationTokenSource stopOrTimeoutCts = CancellationTokenSource.CreateLinkedTokenSource(timeoutCts.Token, stopToken))
+                    timeoutToken = timeoutCts.Token;
+                    using (CancellationTokenSource stopOrTimeoutCts = CancellationTokenSource.CreateLinkedTokenSource(timeoutToken, stopToken))
                     {
                         stopOrTimeoutToken = stopOrTimeoutCts.Token;
-                        timeoutToken = timeoutCts.Token;
 
-                        if (autoIp)
-                        {
-                            string discovered = await TryDiscoverOneDevice(dnsPort, deviceName);
-                            if (discovered != null)
-                            {
-                                ip = discovered;
-                            }
-                            else
-                            {
-                                Debug.Log("[RTSPClientWs] no device discovered, using fallback ip");
-                            }
-                        }
-
-                        Debug.Log($"[RTSPClientWs] using ip: {ip} port: {port}");
                         try
                         {
                             string url = $"rtsp://{ip}:{port}";
+                            Debug.Log($"[RTSPClientWs] using url: {url}");
                             using (ClientWebSocket ws = new ClientWebSocket())
                             {
                                 await InitiateConnection(ws, ip, port);
@@ -238,17 +215,6 @@ namespace PupilLabs
                             {
                                 throw;
                             }
-                        }
-
-                        if (autoReconnect)
-                        {
-                            Debug.Log("[RTSPClientWs] sleeping for 5 seconds before attempting to reconnect");
-                            await Task.Delay(5000, stopToken).NoThrow();
-                            Debug.Log("[RTSPClientWs] awake");
-                        }
-                        else
-                        {
-                            break;
                         }
                     }
                 }
@@ -294,19 +260,22 @@ namespace PupilLabs
             return session;
         }
 
-        private async Task Listen(ClientWebSocket ws, int readTimeout = 2500)
+        private async Task Listen(ClientWebSocket ws, int readTimeout = 7500)
         {
             int msgCounter = 0;
-            int msgsPerLog = 2000;
+            int msgsPerTimer = 200;
+            int msgsPerLog = msgsPerTimer * 10;
             int dataOffset = 12;
             //read data (mixed)
             await Task.Run(async () =>
             {
                 while (stopToken.IsCancellationRequested == false)
                 {
-                    timeoutCts.CancelAfter(readTimeout);
+                    if (msgCounter % msgsPerTimer == 0)
+                    {
+                        timeoutCts.CancelAfter(readTimeout);
+                    }
                     bool binaryMessageReceived = await ReceiveMessageAsync(ws, timeoutToken);
-                    timeoutCts.CancelAfter(Timeout.Infinite);
                     if (binaryMessageReceived && (messageStream.Length == 21 || messageStream.Length == 29 || messageStream.Length == 77 || messageStream.Length == 101) && GetRTPType(messageBuffer) == 99)
                     {
                         gazePointBufferIndex = ++gazePointBufferIndex % gazePointBuffer.Length;
@@ -360,6 +329,7 @@ namespace PupilLabs
                         }
                     }
                 }
+                timeoutCts.CancelAfter(Timeout.Infinite);
             });
         }
 

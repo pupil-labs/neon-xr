@@ -1,4 +1,3 @@
-using PupilLabs.Serializable;
 using System;
 using System.Runtime.InteropServices;
 using System.Threading;
@@ -13,7 +12,8 @@ namespace PupilLabs
         private readonly object gazePointLock = new object();
         private Eyelid eyelid = new Eyelid();
         private EyeState eyeState = new EyeState();
-        private readonly RTSPSettings settings;
+        private readonly string ip;
+        private readonly int port;
 
         public override Vector2 GazePoint
         {
@@ -45,30 +45,28 @@ namespace PupilLabs
             Debug.Log($"[RTSPClientLive555] {message}");
         }
 
-        public RTSPClientLive555(RTSPSettings settings)
+        public RTSPClientLive555(string ip, int port)
         {
-            this.settings = settings;
+            this.ip = ip;
+            this.port = port;
         }
 
         public override async Task RunAsync()
         {
-            string ip = settings.ip;
-            if (settings.autoIp)
-            {
-                string discovered = await TryDiscoverOneDevice(settings.dnsPort, settings.deviceName);
-                if (discovered != null)
-                {
-                    ip = discovered;
-                }
-                else
-                {
-                    Debug.Log("[RTSPClientWs] no device discovered, using fallback ip");
-                }
-            }
-            string url = $"rtsp://{ip}:{settings.port}";
+            int msgCounter = 0;
+            const int readTimeout = 7500;
+            const int msgsPerTimer = 200;
+            const int msgsPerLog = msgsPerTimer * 10;
+
+            string url = $"rtsp://{ip}:{port}";
 
             Live555Wrapper.RawDataCallback gazeCallback = (long timestamp, uint dataSize, IntPtr data) =>
             {
+                if (msgCounter % msgsPerTimer == 0)
+                {
+                    stopCts.CancelAfter(readTimeout);
+                }
+
                 byte[] bytes = new byte[dataSize];
                 Marshal.Copy(data, bytes, 0, (int)dataSize);
                 lock (gazePointLock)
@@ -76,11 +74,18 @@ namespace PupilLabs
                     DataUtils.DecodeGazePoint(bytes, ref gazePoint);
                 }
                 OnGazeDataReceived();
+
+                if (++msgCounter == msgsPerLog)
+                {
+                    Debug.Log($"[RTSPClientWs] {msgsPerLog} messages processed");
+                    msgCounter = 0;
+                }
             };
 
             Live555Wrapper.Start(url, LogCallback, gazeCallback, null);
             using (stopCts = new CancellationTokenSource())
             {
+                stopCts.CancelAfter(readTimeout);
                 await Task.Delay(Timeout.Infinite, stopCts.Token).NoThrow();
             }
             Live555Wrapper.Stop();
