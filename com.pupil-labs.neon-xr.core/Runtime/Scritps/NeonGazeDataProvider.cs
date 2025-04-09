@@ -177,13 +177,13 @@ namespace PupilLabs
                 IPAddress[] localIps = NetworkUtils.GetLocalIPAddresses();
                 foreach (var localIp in localIps)
                 {
-                    Debug.Log($"[RTSPClient] trying local ip: {localIp}");
+                    Debug.Log($"[NeonGazeDataProvider] trying local ip: {localIp}");
                     using (dnsDiscovery = new DnsDiscovery(localIp, dnsPort))
                     {
                         IPAddress deviceIp = await dnsDiscovery.DiscoverOneDevice(deviceName);
                         if (deviceIp != null)
                         {
-                            Debug.Log("[RTSPClient] device found");
+                            Debug.Log("[NeonGazeDataProvider] device found");
                             ip = deviceIp.ToString();
                             break;
                         }
@@ -193,7 +193,7 @@ namespace PupilLabs
             }
             catch (ObjectDisposedException e)
             {
-                Debug.Log("[RTSPClient] device discovery aborted");
+                Debug.Log("[NeonGazeDataProvider] device discovery aborted");
                 Debug.Log(e.Message);
             }
             return ip;

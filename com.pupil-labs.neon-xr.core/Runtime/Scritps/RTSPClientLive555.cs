@@ -77,7 +77,7 @@ namespace PupilLabs
 
                 if (++msgCounter == msgsPerLog)
                 {
-                    Debug.Log($"[RTSPClientWs] {msgsPerLog} messages processed");
+                    Debug.Log($"[RTSPClientLive555] {msgsPerLog} messages processed");
                     msgCounter = 0;
                 }
             };
