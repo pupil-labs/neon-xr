@@ -77,7 +77,7 @@ namespace PupilLabs
                 return;
             }
 
-            while (rtspAutoReconnect == true)
+            do
             {
                 RTSPSettings rtspSettings = storage.Config.rtspSettings;
                 string ip = rtspSettings.ip;
@@ -90,7 +90,8 @@ namespace PupilLabs
                     }
                     else
                     {
-                        Debug.Log("[NeonGazeDataProvider] no device discovered, using fallback ip");
+                        Debug.Log("[NeonGazeDataProvider] no device discovered");
+                        continue;
                     }
                 }
 
@@ -104,7 +105,7 @@ namespace PupilLabs
                     await rtspClient.RunAsync();
                 }
                 rtspClient = null;
-            }
+            } while (rtspAutoReconnect == true);
         }
 
         public void OnGazeDataReceived(object sender, EventArgs e)
