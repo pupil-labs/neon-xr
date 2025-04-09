@@ -87,8 +87,8 @@ namespace PupilLabs
             {
                 stopCts.CancelAfter(readTimeout);
                 await Task.Delay(Timeout.Infinite, stopCts.Token).NoThrow();
+                Live555Wrapper.Stop(); //stopCts must be valid till end due to callback, on C side there is thread.join(), might need rework
             }
-            Live555Wrapper.Stop();
         }
     }
 }
