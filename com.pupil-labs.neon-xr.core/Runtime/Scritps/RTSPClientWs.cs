@@ -13,169 +13,43 @@ namespace PupilLabs
     {
         private readonly string ip;
         private readonly int port;
-        private readonly object gazePointLock = new object();
-        private readonly object eyeStateLock = new object();
-        private readonly object eyelidLock = new object();
-        private int gazePointBufferIndex;
-        private int eyeStateBufferIndex;
-        private int eyelidBufferIndex;
-        private Vector2[] gazePointBuffer;
-
-        private volatile bool eyeStateAvailable = false;
-        private volatile bool eyelidAvailable = false;
-
-        private EyeState eyeState = new EyeState();
-        private Vector3[] eyeballCenterLeftBuffer;
-        private Vector3[] opticalAxisLeftBuffer;
-        private float[] pupilDiameterLeftBuffer;
-        private Vector3[] eyeballCenterRightBuffer;
-        private Vector3[] opticalAxisRightBuffer;
-        private float[] pupilDiameterRightBuffer;
-
-        private Eyelid eyelid = new Eyelid();
-        private float[] eyelidAngleTopLeftBuffer;
-        private float[] eyelidAngleBottomLeftBuffer;
-        private float[] eyelidApertureLeftBuffer;
-        private float[] eyelidAngleTopRightBuffer;
-        private float[] eyelidAngleBottomRightBuffer;
-        private float[] eyelidApertureRightBuffer;
-
-        public override Vector2 GazePoint
-        {
-            get
-            {
-                lock (gazePointLock)
-                {
-                    return gazePointBuffer[gazePointBufferIndex];
-                }
-            }
-        }
-
-        public override Vector2 SmoothGazePoint
-        {
-            get
-            {
-                lock (gazePointLock)
-                {
-                    return gazePointBuffer.Average();
-                }
-            }
-        }
-
-        public override bool EyeStateAvailable
-        {
-            get { return eyeStateAvailable; }
-        }
-
-        public override EyeState EyeState
-        {
-            get
-            {
-                lock (eyeStateLock)
-                {
-                    eyeState.pupilDiameterLeft = pupilDiameterLeftBuffer[eyeStateBufferIndex];
-                    eyeState.eyeballCenterLeft = eyeballCenterLeftBuffer[eyeStateBufferIndex];
-                    eyeState.opticalAxisLeft = opticalAxisLeftBuffer[eyeStateBufferIndex];
-
-                    eyeState.pupilDiameterRight = pupilDiameterRightBuffer[eyeStateBufferIndex];
-                    eyeState.eyeballCenterRight = eyeballCenterRightBuffer[eyeStateBufferIndex];
-                    eyeState.opticalAxisRight = opticalAxisRightBuffer[eyeStateBufferIndex];
-                    return eyeState;
-                }
-            }
-        }
-
-        public override EyeState SmoothEyeState
-        {
-            get
-            {
-                lock (eyeStateLock)
-                {
-                    eyeState.pupilDiameterLeft = pupilDiameterLeftBuffer.Average();
-                    eyeState.eyeballCenterLeft = eyeballCenterLeftBuffer.Average();
-                    eyeState.opticalAxisLeft = opticalAxisLeftBuffer.Average();
-
-                    eyeState.pupilDiameterRight = pupilDiameterRightBuffer.Average();
-                    eyeState.eyeballCenterRight = eyeballCenterRightBuffer.Average();
-                    eyeState.opticalAxisRight = opticalAxisRightBuffer.Average();
-                    return eyeState;
-                }
-            }
-        }
-
-        public override bool EyelidAvailable
-        {
-            get { return eyelidAvailable; }
-        }
-
-        public override Eyelid Eyelid
-        {
-            get
-            {
-                lock (eyelidLock)
-                {
-                    eyelid.eyelidAngleTopLeft = eyelidAngleTopLeftBuffer[eyelidBufferIndex];
-                    eyelid.eyelidAngleBottomLeft = eyelidAngleBottomLeftBuffer[eyelidBufferIndex];
-                    eyelid.eyelidApertureLeft = eyelidApertureLeftBuffer[eyelidBufferIndex];
-
-                    eyelid.eyelidAngleTopRight = eyelidAngleTopRightBuffer[eyelidBufferIndex];
-                    eyelid.eyelidAngleBottomRight = eyelidAngleBottomRightBuffer[eyelidBufferIndex];
-                    eyelid.eyelidApertureRight = eyelidApertureRightBuffer[eyelidBufferIndex];
-                    return eyelid;
-                }
-            }
-        }
-
-        public override Eyelid SmoothEyelid
-        {
-            get
-            {
-                lock (eyelidLock)
-                {
-                    eyelid.eyelidAngleTopLeft = eyelidAngleTopLeftBuffer.Average();
-                    eyelid.eyelidAngleBottomLeft = eyelidAngleBottomLeftBuffer.Average();
-                    eyelid.eyelidApertureLeft = eyelidApertureLeftBuffer.Average();
-
-                    eyelid.eyelidAngleTopRight = eyelidAngleTopRightBuffer.Average();
-                    eyelid.eyelidAngleBottomRight = eyelidAngleBottomRightBuffer.Average();
-                    eyelid.eyelidApertureRight = eyelidApertureRightBuffer.Average();
-                    return eyelid;
-                }
-            }
-        }
+        private readonly object dataLock = new object();
+        private GazeData gazeData = new GazeData();
 
         private readonly byte[] receiveBuffer = new byte[4096];
         private readonly byte[] messageBuffer = new byte[8192];
         private readonly MemoryStream messageStream = null;
+
+        private float[] gazePoint = new float[2];
+        private bool worn;
+        private float[] gazePointDualRight = new float[2];
+        private float[] eyeStateLeft = new float[7];
+        private float[] eyeStateRight = new float[7];
+        private float[] eyelidLeft = new float[3];
+        private float[] eyelidRight = new float[3];
+        private EtDataType etDataType = EtDataType.Unknown;
 
         CancellationTokenSource timeoutCts;
         CancellationToken timeoutToken;
         CancellationToken stopToken;
         CancellationToken stopOrTimeoutToken;
 
-        public RTSPClientWs(string ip, int port, int gazePointBufferSize = 5, int eyeStateBufferSize = 5, int eyelidBufferSize = 5)
+        public override GazeData GazeData
+        {
+            get
+            {
+                lock (dataLock)
+                {
+                    gazeData.SetData(etDataType, gazePoint, worn, gazePointDualRight, eyeStateLeft, eyeStateRight, eyelidLeft, eyelidRight);
+                    return gazeData;
+                }
+            }
+        }
+
+        public RTSPClientWs(string ip, int port)
         {
             this.ip = ip;
             this.port = port;
-
-            gazePointBuffer = new Vector2[gazePointBufferSize];
-            gazePointBufferIndex = gazePointBufferSize - 1;
-
-            pupilDiameterLeftBuffer = new float[eyeStateBufferSize];
-            eyeballCenterLeftBuffer = new Vector3[eyeStateBufferSize];
-            opticalAxisLeftBuffer = new Vector3[eyeStateBufferSize];
-            pupilDiameterRightBuffer = new float[eyeStateBufferSize];
-            eyeballCenterRightBuffer = new Vector3[eyeStateBufferSize];
-            opticalAxisRightBuffer = new Vector3[eyeStateBufferSize];
-            eyeStateBufferIndex = eyeStateBufferSize - 1;
-
-            eyelidAngleTopLeftBuffer = new float[eyelidBufferSize];
-            eyelidAngleBottomLeftBuffer = new float[eyelidBufferSize];
-            eyelidApertureLeftBuffer = new float[eyelidBufferSize];
-            eyelidAngleTopRightBuffer = new float[eyelidBufferSize];
-            eyelidAngleBottomRightBuffer = new float[eyelidBufferSize];
-            eyelidApertureRightBuffer = new float[eyelidBufferSize];
-            eyelidBufferIndex = eyelidBufferSize - 1;
 
             messageStream = new MemoryStream(messageBuffer, true);
         }
@@ -265,7 +139,7 @@ namespace PupilLabs
             int msgCounter = 0;
             int msgsPerTimer = 200;
             int msgsPerLog = msgsPerTimer * 10;
-            int dataOffset = 12;
+            uint dataOffset = 12;
             //read data (mixed)
             await Task.Run(async () =>
             {
@@ -276,50 +150,18 @@ namespace PupilLabs
                         timeoutCts.CancelAfter(readTimeout);
                     }
                     bool binaryMessageReceived = await ReceiveMessageAsync(ws, timeoutToken);
-                    if (binaryMessageReceived && (messageStream.Length == 21 || messageStream.Length == 29 || messageStream.Length == 77 || messageStream.Length == 101) && GetRTPType(messageBuffer) == 99)
+                    if (binaryMessageReceived && GetRTPType(messageBuffer) == 99)
                     {
-                        gazePointBufferIndex = ++gazePointBufferIndex % gazePointBuffer.Length;
-                        lock (gazePointLock)
+                        lock (dataLock)
                         {
-                            DataUtils.DecodeGazePoint(messageBuffer, ref gazePointBuffer[gazePointBufferIndex], dataOffset);
+                            etDataType = RTSPServiceWrapper.BytesToGazeData(
+                                messageBuffer, (uint)messageStream.Length, dataOffset,
+                                gazePoint, out worn, gazePointDualRight,
+                                eyeStateLeft, eyeStateRight,
+                                eyelidLeft, eyelidRight
+                            );
                         }
-                        if (messageStream.Length == 77 || messageStream.Length == 101)
-                        {
-                            eyeStateAvailable = true;
-                            eyeStateBufferIndex = ++eyeStateBufferIndex % pupilDiameterLeftBuffer.Length;
-                            lock (eyeStateLock)
-                            {
-                                DataUtils.DecodeEyeState(
-                                    messageBuffer,
-                                    ref pupilDiameterLeftBuffer[eyeStateBufferIndex],
-                                    ref eyeballCenterLeftBuffer[eyeStateBufferIndex],
-                                    ref opticalAxisLeftBuffer[eyeStateBufferIndex],
-                                    ref pupilDiameterRightBuffer[eyeStateBufferIndex],
-                                    ref eyeballCenterRightBuffer[eyeStateBufferIndex],
-                                    ref opticalAxisRightBuffer[eyeStateBufferIndex],
-                                    dataOffset
-                                );
-                            }
 
-                            if (messageStream.Length == 101)
-                            {
-                                eyelidAvailable = true;
-                                eyelidBufferIndex = ++eyelidBufferIndex % eyelidAngleTopLeftBuffer.Length;
-                                lock (eyelidLock)
-                                {
-                                    DataUtils.DecodeEyelid(
-                                        messageBuffer,
-                                        ref eyelidAngleTopLeftBuffer[eyelidBufferIndex],
-                                        ref eyelidAngleBottomLeftBuffer[eyelidBufferIndex],
-                                        ref eyelidApertureLeftBuffer[eyelidBufferIndex],
-                                        ref eyelidAngleTopRightBuffer[eyelidBufferIndex],
-                                        ref eyelidAngleBottomRightBuffer[eyelidBufferIndex],
-                                        ref eyelidApertureRightBuffer[eyelidBufferIndex],
-                                        dataOffset
-                                    );
-                                }
-                            }
-                        }
                         OnGazeDataReceived();
 
                         if (++msgCounter == msgsPerLog)

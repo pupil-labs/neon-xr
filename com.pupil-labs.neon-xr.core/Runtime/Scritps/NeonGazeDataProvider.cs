@@ -32,24 +32,14 @@ namespace PupilLabs
         [SerializeField]
         private float simulatedPupilDiameter = 0.004f;
         [SerializeField]
-        private bool gazeSmoothing = true;
-        [SerializeField]
-        private int gazeSmoothingWindowSize = 5;
-        [SerializeField]
-        private bool eyeStateSmoothing = true;
-        [SerializeField]
-        private int eyeStateSmoothingWindowSize = 5;
-        [SerializeField]
-        private bool eyelidSmoothing = true;
-        [SerializeField]
-        private int eyelidSmoothingWindowSize = 5;
-        [SerializeField]
         private bool rtspAutoReconnect = true;
 
         private DnsDiscovery dnsDiscovery = null;
-        private RTSPClient rtspClient;
         private volatile bool dataReceived = false;
+        private GazeData gazeData;
 
+        public RTSPClient RTSPClient { get { return rtspClient; } }
+        private RTSPClient rtspClient;
         public override Vector3 RawGazeDir { get { return rawGazeDir; } }
         private Vector3 rawGazeDir = Vector3.forward;
         public override Vector2 RawGazePoint { get { return rawGazePoint; } }
@@ -98,7 +88,7 @@ namespace PupilLabs
                 using (
                     rtspClient = rtspSettings.useUdp ?
                         new RTSPClientLive555(ip, rtspSettings.port) :
-                        new RTSPClientWs(ip, rtspSettings.port, gazeSmoothingWindowSize, eyeStateSmoothingWindowSize, eyelidSmoothingWindowSize)
+                        new RTSPClientWs(ip, rtspSettings.port)
                 )
                 {
                     rtspClient.GazeDataReceived += OnGazeDataReceived;
@@ -126,20 +116,13 @@ namespace PupilLabs
                 }
                 else if (rtspClient != null)
                 {
-                    rawGazePoint = gazeSmoothing ? rtspClient.SmoothGazePoint : rtspClient.GazePoint;
+                    gazeData = rtspClient.GazeData;
+                    rawGazePoint = gazeData.gazePoint;
+                    eyeStateAvailable = gazeData.type >= EtDataType.EyeStateGazeData;
+                    rawEyeState = gazeData.eyeState;
+                    eyelidAvailable = gazeData.type >= EtDataType.EyeStateEyelidGazeData;
+                    rawEyelid = gazeData.eyelid;
                     dataReceived = false;
-
-                    eyeStateAvailable = rtspClient.EyeStateAvailable;
-                    if (eyeStateAvailable)
-                    {
-                        rawEyeState = eyeStateSmoothing ? rtspClient.SmoothEyeState : rtspClient.EyeState;
-                    }
-
-                    eyelidAvailable = rtspClient.EyelidAvailable;
-                    if (eyelidAvailable)
-                    {
-                        rawEyelid = eyelidSmoothing ? rtspClient.SmoothEyelid : rtspClient.Eyelid;
-                    }
                 }
 
                 rawGazeDir = CameraUtils.ImgPointToDir(rawGazePoint, storage.CameraIntrinsics.cameraMatrix, storage.CameraIntrinsics.distortionCoefficients);

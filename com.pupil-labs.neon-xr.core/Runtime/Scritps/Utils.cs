@@ -62,42 +62,6 @@ namespace PupilLabs
             }
             return filePath;
         }
-
-        public static void DecodeGazePoint(byte[] bytes, ref Vector2 gp, int offset = 0)
-        {
-            gp.x = BitConverter.ToSingle(NetworkUtils.NetworkBytesToLocal(bytes, offset + 0, sizeof(float)), 0);
-            gp.y = BitConverter.ToSingle(NetworkUtils.NetworkBytesToLocal(bytes, offset + 4, sizeof(float)), 0);
-        }
-
-        public static void DecodeEyeState(byte[] bytes, ref float pdl, ref Vector3 ecl, ref Vector3 oal, ref float pdr, ref Vector3 ecr, ref Vector3 oar, int offset = 0, float scale = 0.001f)
-        {
-            pdl = BitConverter.ToSingle(NetworkUtils.NetworkBytesToLocal(bytes, offset + 9, sizeof(float)), 0) * scale;
-            ecl.x = BitConverter.ToSingle(NetworkUtils.NetworkBytesToLocal(bytes, offset + 12, sizeof(float)), 0) * scale;
-            ecl.y = -BitConverter.ToSingle(NetworkUtils.NetworkBytesToLocal(bytes, offset + 17, sizeof(float)), 0) * scale;
-            ecl.z = BitConverter.ToSingle(NetworkUtils.NetworkBytesToLocal(bytes, offset + 21, sizeof(float)), 0) * scale;
-            oal.x = BitConverter.ToSingle(NetworkUtils.NetworkBytesToLocal(bytes, offset + 25, sizeof(float)), 0) * scale;
-            oal.y = -BitConverter.ToSingle(NetworkUtils.NetworkBytesToLocal(bytes, offset + 29, sizeof(float)), 0) * scale;
-            oal.z = BitConverter.ToSingle(NetworkUtils.NetworkBytesToLocal(bytes, offset + 33, sizeof(float)), 0) * scale;
-
-            pdr = BitConverter.ToSingle(NetworkUtils.NetworkBytesToLocal(bytes, offset + 37, sizeof(float)), 0) * scale;
-            ecr.x = BitConverter.ToSingle(NetworkUtils.NetworkBytesToLocal(bytes, offset + 41, sizeof(float)), 0) * scale;
-            ecr.y = -BitConverter.ToSingle(NetworkUtils.NetworkBytesToLocal(bytes, offset + 45, sizeof(float)), 0) * scale;
-            ecr.z = BitConverter.ToSingle(NetworkUtils.NetworkBytesToLocal(bytes, offset + 49, sizeof(float)), 0) * scale;
-            oar.x = BitConverter.ToSingle(NetworkUtils.NetworkBytesToLocal(bytes, offset + 53, sizeof(float)), 0) * scale;
-            oar.y = -BitConverter.ToSingle(NetworkUtils.NetworkBytesToLocal(bytes, offset + 57, sizeof(float)), 0) * scale;
-            oar.z = BitConverter.ToSingle(NetworkUtils.NetworkBytesToLocal(bytes, offset + 61, sizeof(float)), 0) * scale;
-        }
-
-        public static void DecodeEyelid(byte[] bytes, ref float tlAngle, ref float blAngle, ref float apl, ref float trAngle, ref float brAngle, ref float apr, int offset = 0, float scale = 0.001f)
-        {
-            tlAngle = BitConverter.ToSingle(NetworkUtils.NetworkBytesToLocal(bytes, offset + 65, sizeof(float)), 0);
-            blAngle = BitConverter.ToSingle(NetworkUtils.NetworkBytesToLocal(bytes, offset + 69, sizeof(float)), 0);
-            apl = BitConverter.ToSingle(NetworkUtils.NetworkBytesToLocal(bytes, offset + 73, sizeof(float)), 0) * scale;
-
-            trAngle = BitConverter.ToSingle(NetworkUtils.NetworkBytesToLocal(bytes, offset + 77, sizeof(float)), 0);
-            brAngle = BitConverter.ToSingle(NetworkUtils.NetworkBytesToLocal(bytes, offset + 81, sizeof(float)), 0);
-            apr = BitConverter.ToSingle(NetworkUtils.NetworkBytesToLocal(bytes, offset + 85, sizeof(float)), 0) * scale;
-        }
     }
 
     public static class CameraUtils

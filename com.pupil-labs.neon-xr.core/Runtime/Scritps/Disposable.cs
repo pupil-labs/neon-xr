@@ -9,12 +9,13 @@ namespace PupilLabs
         protected virtual void DisposeManagedResources()
         {
             // Dispose managed state (managed objects)
+            // Called only from Dispose(), never from finalizer
         }
 
         protected virtual void DisposeUnmanagedResources()
         {
             // Free unmanaged resources (unmanaged objects)
-            // Set large fields to null
+            // Called from both Dispose() and finalizer
         }
 
         private void Dispose(bool disposing)
