@@ -30,6 +30,24 @@ namespace PupilLabs
         Unknown = -1
     }
 
+    public enum EyeEventsDataType
+    {
+        FixationData = 0,
+        FixationOnsetData = 1,
+        BlinkData = 2,
+        Unknown = -1
+    }
+
+    public enum EyeEventType
+    {
+        Saccade = 0,
+        Fixation = 1,
+        SaccadeOnset = 2,
+        FixationOnset = 3,
+        Blink = 4,
+        KeepAlive = 5
+    }
+
     public static class RTSPServiceWrapper
     {
         delegate void LogCallback([MarshalAs(UnmanagedType.LPStr)] string message, IntPtr userData);
@@ -56,7 +74,7 @@ namespace PupilLabs
             uint dataSize,
             uint offset,
             [Out] float[] gazePoint,          // length 2
-            [Out, MarshalAs(UnmanagedType.I1)] out bool worn,
+            [MarshalAs(UnmanagedType.I1)] out bool worn,
             [Out] float[] gazePointDualRight, // length 2
             [Out] float[] eyeStateLeft,       // length 7
             [Out] float[] eyeStateRight,      // length 7
@@ -125,6 +143,28 @@ namespace PupilLabs
                 handle.Free();
             }
         }
+
+        [DllImport("pl-rtsp-service")]
+        static extern EyeEventsDataType pl_bytes_to_eye_event_data(
+            IntPtr data,
+            uint dataSize,
+            uint offset,
+            out EyeEventType eventType,
+            out long startTime,
+            out long endTime,
+            [Out] float[] gazeEvent // length 10
+        );
+
+        [DllImport("pl-rtsp-service")]
+        static extern int pl_bytes_to_imu_data(
+            IntPtr data,
+            uint dataSize,
+            uint offset,
+            out ulong timestampNs,
+            [Out] float[] accelData, //length 3
+            [Out] float[] gyroData,  //length 3
+            [Out] float[] quatData   //length 4
+        );
 
         public static T StartWorker<T>(string url, byte streamMask) where T : RTSPWorker, new()
         {
