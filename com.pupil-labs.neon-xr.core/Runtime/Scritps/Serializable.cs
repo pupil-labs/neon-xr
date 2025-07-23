@@ -84,5 +84,6 @@ namespace PupilLabs.Serializable
     public class StatusData
     {
         public string device_name;
+        public string device_id;
     }
 }

@@ -166,6 +166,14 @@ namespace PupilLabs
             [Out] float[] quatData   //length 4
         );
 
+        [DllImport("pl-rtsp-service")]
+        static extern long pl_time_ms();
+
+        public static long UnixTimeMs()
+        {
+            return pl_time_ms();
+        }
+
         public static T StartWorker<T>(string url, byte streamMask) where T : RTSPWorker, new()
         {
             short workerId = pl_acquire_worker();

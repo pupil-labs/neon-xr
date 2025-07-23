@@ -34,6 +34,13 @@ namespace PupilLabs
 
         public async Task<IPAddress> DiscoverOneDevice(string name = "", int tryCount = 3)
         {
+            Dictionary<string, IPAddress> devices = await DiscoverDevices(name, tryCount, 1);
+            return devices.FirstOrDefault().Value;
+        }
+
+        public async Task<Dictionary<string, IPAddress>> DiscoverDevices(string name = "", int tryCount = 3, int limit = 0)
+        {
+            Dictionary<string, IPAddress> devices = new Dictionary<string, IPAddress>();
             for (int i = 0; i < tryCount; i++)
             {
                 await SendDiscoveryQuery();
@@ -52,7 +59,7 @@ namespace PupilLabs
                     }
                     DnsPacket packet = new DnsPacket(new KaitaiStream(buffer));
                     IPAddress ip = null;
-                    string deviceName = null;
+                    string deviceLabel = null;
                     foreach (var a in packet.Answers)
                     {
                         if (a.Type == DnsPacket.TypeType.A)
@@ -64,16 +71,16 @@ namespace PupilLabs
                         {
                             var txt = String.Join("", a.Name.Name.Select(x => x.Name));
                             Debug.Log($"[DnsDiscovery] received response from: {txt}");
-                            deviceName = txt.StartsWith("PI monitor") ? txt : null;
+                            const string namePrefix = "PI monitor:";
+                            if (txt.StartsWith(namePrefix))
+                            {
+                                deviceLabel = txt.Substring(namePrefix.Length);
+                            }
                         }
                     }
                     if (ip != null)
                     {
-                        if (deviceName != null)
-                        {
-                            deviceName = deviceName.Split(':')[1]; //PI monitor:Neon Companion:a95136f3304b9204
-                        }
-                        else
+                        if (deviceLabel == null)
                         {
                             if (httpClient == null)
                             {
@@ -92,8 +99,8 @@ namespace PupilLabs
                                     StatusResultItem item = status.result.FirstOrDefault(x => x.model == "Phone");
                                     if (item != null)
                                     {
-                                        deviceName = item.data.device_name;
-                                        Debug.Log($"[DnsDiscovery] REST probe response from: {deviceName}");
+                                        deviceLabel = $"{item.data.device_name}:{item.data.device_id}";
+                                        Debug.Log($"[DnsDiscovery] REST probe response from: {deviceLabel}");
                                     }
                                 }
                             }
@@ -110,17 +117,24 @@ namespace PupilLabs
                                 }
                             }
                         }
-                        if (deviceName != null)
+                        if (deviceLabel != null)
                         {
-                            if (name == String.Empty || deviceName == name)
+                            if (String.IsNullOrEmpty(name) || deviceLabel.StartsWith($"{name}:"))
                             {
-                                return ip;
+                                devices[deviceLabel] = ip;
+                                Debug.Log($"[DnsDiscovery] Device: {deviceLabel} with ip: {ip} added to the device dictionary");
+                                if (devices.Count == limit)
+                                {
+                                    Debug.Log($"[DnsDiscovery] Device limit reached: {limit}");
+                                    return devices;
+                                }
                             }
                         }
                     }
                 }
             }
-            return null;
+            Debug.Log($"[DnsDiscovery] Found {devices.Count} devices");
+            return devices;
         }
 
         protected virtual async Task SendDiscoveryQuery()
