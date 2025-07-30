@@ -32,15 +32,15 @@ namespace PupilLabs
             socket.Close();
         }
 
-        public async Task<IPAddress> DiscoverOneDevice(string name = "", int tryCount = 3)
+        public async Task<string> DiscoverOneDevice(string name = "", int tryCount = 3)
         {
-            Dictionary<string, IPAddress> devices = await DiscoverDevices(name, tryCount, 1);
+            Dictionary<string, string> devices = await DiscoverDevices(name, tryCount, 1);
             return devices.FirstOrDefault().Value;
         }
 
-        public async Task<Dictionary<string, IPAddress>> DiscoverDevices(string name = "", int tryCount = 3, int limit = 0)
+        public async Task<Dictionary<string, string>> DiscoverDevices(string name = "", int tryCount = 3, int limit = 0)
         {
-            Dictionary<string, IPAddress> devices = new Dictionary<string, IPAddress>();
+            Dictionary<string, string> devices = new Dictionary<string, string>();
             for (int i = 0; i < tryCount; i++)
             {
                 await SendDiscoveryQuery();
@@ -121,7 +121,7 @@ namespace PupilLabs
                         {
                             if (String.IsNullOrEmpty(name) || deviceLabel.StartsWith($"{name}:"))
                             {
-                                devices[deviceLabel] = ip;
+                                devices[deviceLabel] = ip.ToString();
                                 Debug.Log($"[DnsDiscovery] Device: {deviceLabel} with ip: {ip} added to the device dictionary");
                                 if (devices.Count == limit)
                                 {

@@ -5,7 +5,8 @@
         "ip": "192.168.1.49",
         "useUdp": true,
         "port": 8086,
-        "dnsPort": 52634
+        "dnsPort": 52634,
+        "timeEchoPort": 12321
     },
     "sensorCalibration": {
         "offset": {

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
+using UnityEngine;
 
 namespace PupilLabs
 {
@@ -30,7 +31,7 @@ namespace PupilLabs
         Unknown = -1
     }
 
-    public enum EyeEventsDataType
+    public enum EyeEventDataType
     {
         FixationData = 0,
         FixationOnsetData = 1,
@@ -46,6 +47,11 @@ namespace PupilLabs
         FixationOnset = 3,
         Blink = 4,
         KeepAlive = 5
+    }
+
+    public enum ImuDataType
+    {
+        Basic = 0
     }
 
     public static class RTSPServiceWrapper
@@ -101,17 +107,36 @@ namespace PupilLabs
                 eyelidLeft, eyelidRight
             );
 
-            eyeStateLeft[0] *= 0.001f;
-            eyeStateLeft[1] *= 0.001f;
-            eyeStateLeft[2] *= -0.001f;
-            eyeStateLeft[3] *= 0.001f;
-            eyeStateLeft[5] *= -1f;
+            if (eyeStateLeft != null)
+            {
+                eyeStateLeft[0] *= 0.001f;
+                eyeStateLeft[1] *= 0.001f;
+                eyeStateLeft[2] *= -0.001f;
+                eyeStateLeft[3] *= 0.001f;
+                eyeStateLeft[5] *= -1f;
+            }
 
-            eyeStateRight[0] *= 0.001f;
-            eyeStateRight[1] *= 0.001f;
-            eyeStateRight[2] *= -0.001f;
-            eyeStateRight[3] *= 0.001f;
-            eyeStateRight[5] *= -1f;
+            if (eyeStateRight != null)
+            {
+                eyeStateRight[0] *= 0.001f;
+                eyeStateRight[1] *= 0.001f;
+                eyeStateRight[2] *= -0.001f;
+                eyeStateRight[3] *= 0.001f;
+                eyeStateRight[5] *= -1f;
+            }
+
+            if (eyelidLeft != null)
+            {
+                eyelidLeft[0] *= Mathf.Rad2Deg;
+                eyelidLeft[1] *= Mathf.Rad2Deg;
+            }
+
+            if (eyelidRight != null)
+            {
+                eyelidRight[0] *= Mathf.Rad2Deg;
+                eyelidRight[1] *= Mathf.Rad2Deg;
+            }
+
             return res;
         }
 
@@ -145,18 +170,35 @@ namespace PupilLabs
         }
 
         [DllImport("pl-rtsp-service")]
-        static extern EyeEventsDataType pl_bytes_to_eye_event_data(
+        static extern EyeEventDataType pl_bytes_to_eye_event_data(
             IntPtr data,
             uint dataSize,
             uint offset,
             out EyeEventType eventType,
-            out long startTime,
-            out long endTime,
+            out long startTimeNs,
+            out long endTimeNs,
             [Out] float[] gazeEvent // length 10
         );
 
+        public static EyeEventDataType BytesToEyeEventData(
+            IntPtr data,
+            uint dataSize,
+            uint offset,
+            out EyeEventType eventType, out long startTimeNs, //always available
+            out long endTimeNs, //not available for onset events and keepalive
+            float[] gazeEvent) //currently available only for fixation events [start_gaze_x, start_gaze_y, end_gaze_x, end_gaze_y, mean_gaze_x, mean_gaze_y, amplitude_pixels, amplitude_angle_deg, mean_velocity, max_velocity]
+        {
+            EyeEventDataType res = pl_bytes_to_eye_event_data(
+                data, dataSize, offset,
+                out eventType, out startTimeNs,
+                out endTimeNs,
+                gazeEvent
+            );
+            return res;
+        }
+
         [DllImport("pl-rtsp-service")]
-        static extern int pl_bytes_to_imu_data(
+        static extern ImuDataType pl_bytes_to_imu_data(
             IntPtr data,
             uint dataSize,
             uint offset,
@@ -165,6 +207,41 @@ namespace PupilLabs
             [Out] float[] gyroData,  //length 3
             [Out] float[] quatData   //length 4
         );
+
+        public static ImuDataType BytesToImuData(
+            IntPtr data,
+            uint dataSize,
+            uint offset,
+            out ulong timestampNs,
+            float[] accelData,
+            float[] gyroData,
+            float[] quatData)
+        {
+            ImuDataType res = pl_bytes_to_imu_data(
+                data, dataSize, offset,
+                out timestampNs, accelData, gyroData, quatData
+            );
+
+            if (accelData != null)
+            {
+                accelData[1] *= -1f;
+            }
+
+            if (gyroData != null)
+            {
+                gyroData[0] *= -1f;
+                gyroData[2] *= -1f;
+
+            }
+
+            if (quatData != null) //w, x, y, z
+            {
+                quatData[1] *= -1f;
+                quatData[3] *= -1f;
+            }
+
+            return res;
+        }
 
         [DllImport("pl-rtsp-service")]
         static extern long pl_time_ms();

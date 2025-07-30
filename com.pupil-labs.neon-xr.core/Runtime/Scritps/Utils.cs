@@ -5,7 +5,6 @@ using System.Linq;
 using System.Net;
 using System.Net.NetworkInformation;
 using System.Net.Sockets;
-using System.Threading;
 using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
@@ -133,54 +132,6 @@ namespace PupilLabs
                 Array.Reverse(localBytes);
             }
             return localBytes;
-        }
-
-        public static async Task<long> EstimateTimeOffset(string host, int port, int n, int sleepMs = 0, CancellationToken cancellationToken = default)
-        {
-            long offsetSum = 0;
-
-            using (TcpClient client = new TcpClient())
-            {
-                await client.ConnectAsync(host, port);
-                using NetworkStream stream = client.GetStream();
-
-                const int tsSize = sizeof(long);
-                const int responseSize = tsSize * 2;
-                byte[] response = new byte[responseSize];
-
-                for (int i = 0; i < n; i++)
-                {
-                    long beforeMs = RTSPServiceWrapper.UnixTimeMs();
-                    byte[] beforeBytes = NetworkBytesToLocal(BitConverter.GetBytes(beforeMs), 0, tsSize);
-                    await stream.WriteAsync(beforeBytes, 0, tsSize, cancellationToken);
-
-                    int read = 0;
-                    while (read < responseSize)
-                    {
-                        int bytesRead = await stream.ReadAsync(response, read, responseSize - read, cancellationToken);
-                        if (bytesRead == 0) throw new IOException("Connection closed unexpectedly");
-                        read += bytesRead;
-                    }
-                    long afterMs = RTSPServiceWrapper.UnixTimeMs();
-
-                    long validationMs = BitConverter.ToInt64(NetworkBytesToLocal(response, 0, tsSize), 0);
-                    long serverMs = BitConverter.ToInt64(NetworkBytesToLocal(response, tsSize, tsSize), 0);
-
-                    if (validationMs != beforeMs)
-                    {
-                        throw new InvalidDataException($"Validation failed. Expected {beforeMs}, got {validationMs}");
-                    }
-
-                    long clientMidpoint = (beforeMs + afterMs) / 2;
-                    offsetSum += clientMidpoint - serverMs;
-
-                    if (sleepMs > 0 && i < n - 1)
-                    {
-                        await Task.Delay(sleepMs, cancellationToken);
-                    }
-                }
-            }
-            return offsetSum / n;
         }
     }
 }

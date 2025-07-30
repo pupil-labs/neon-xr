@@ -39,6 +39,14 @@ namespace PupilLabs
             eyelid = gazeDataProvider.Eyelid;
         }
 
+        public void SetGazeData(bool eyeStateAvailable, EyeState eyeState, bool eyelidAvailable, Eyelid eyelid)
+        {
+            this.eyeStateAvailable = eyeStateAvailable;
+            this.eyeState = eyeState;
+            this.eyelidAvailable = eyelidAvailable;
+            this.eyelid = eyelid;
+        }
+
         protected virtual void LateUpdate()
         {
             if (eyeStateAvailable == false)

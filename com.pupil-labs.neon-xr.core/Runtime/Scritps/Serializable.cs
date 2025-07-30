@@ -23,6 +23,15 @@ namespace PupilLabs.Serializable
     public class RaycastHitEvent : UnityEvent<RaycastHit> { };
 
     [Serializable]
+    public class DStringEvent : UnityEvent<string, string> { };
+
+    [Serializable]
+    public class DeviceManagerEvent : UnityEvent<DeviceManager> { };
+
+    [Serializable]
+    public class StringLongEvent : UnityEvent<string, long> { };
+
+    [Serializable]
     public struct SVector3
     {
         public float x;
@@ -58,6 +67,7 @@ namespace PupilLabs.Serializable
         public bool useUdp;
         public int port;
         public int dnsPort;
+        public int timeEchoPort;
     }
 
     [Serializable]

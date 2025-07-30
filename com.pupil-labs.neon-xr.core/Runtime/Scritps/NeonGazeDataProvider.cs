@@ -12,6 +12,8 @@ namespace PupilLabs
         [SerializeField]
         private DataStorage storage;
         [SerializeField]
+        private DeviceManager deviceManager;
+        [SerializeField]
         private bool simulationEnabled = false;
         [SerializeField]
         private InputActionReference simulatedLookHorizontal;
@@ -34,7 +36,6 @@ namespace PupilLabs
         [SerializeField]
         private bool rtspAutoReconnect = true;
 
-        private DnsDiscovery dnsDiscovery = null;
         private volatile bool dataReceived = false;
         private GazeData gazeData;
 
@@ -73,10 +74,9 @@ namespace PupilLabs
                 string ip = rtspSettings.ip;
                 if (rtspSettings.autoIp)
                 {
-                    string discovered = await TryDiscoverOneDevice(rtspSettings.dnsPort, rtspSettings.deviceName);
-                    if (discovered != null)
+                    if (await deviceManager.Discover() && deviceManager.SelectAnyDevice())
                     {
-                        ip = discovered;
+                        ip = deviceManager.SelectedDeviceIp;
                     }
                     else
                     {
@@ -149,38 +149,7 @@ namespace PupilLabs
         private void OnDestroy()
         {
             rtspAutoReconnect = false;
-            dnsDiscovery?.Abort();
             rtspClient?.Stop();
-        }
-
-        private async Task<string> TryDiscoverOneDevice(int dnsPort, string deviceName = "")
-        {
-            string ip = null;
-            try
-            {
-                IPAddress[] localIps = NetworkUtils.GetLocalIPAddresses();
-                foreach (var localIp in localIps)
-                {
-                    Debug.Log($"[NeonGazeDataProvider] trying local ip: {localIp}");
-                    using (dnsDiscovery = new DnsDiscovery(localIp, dnsPort))
-                    {
-                        IPAddress deviceIp = await dnsDiscovery.DiscoverOneDevice(deviceName);
-                        if (deviceIp != null)
-                        {
-                            Debug.Log("[NeonGazeDataProvider] device found");
-                            ip = deviceIp.ToString();
-                            break;
-                        }
-                    }
-                    dnsDiscovery = null;
-                }
-            }
-            catch (ObjectDisposedException e)
-            {
-                Debug.Log("[NeonGazeDataProvider] device discovery aborted");
-                Debug.Log(e.Message);
-            }
-            return ip;
         }
     }
 }
