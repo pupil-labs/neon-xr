@@ -1,6 +1,6 @@
 {
   "name": "com.pupil-labs.neon-xr.core",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "displayName": "Neon XR Core",
   "description": "Minimal subset of scripts that are required to get gaze data from Neon",
   "unity": "2021.3",
