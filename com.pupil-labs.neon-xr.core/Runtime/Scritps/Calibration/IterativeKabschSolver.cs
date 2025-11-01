@@ -13,6 +13,10 @@ namespace PupilLabs.Calibration
         protected Vector3Int minMaxStepY = new Vector3Int(0, 30, 1);
         [SerializeField]
         protected Vector3Int minMaxStepZ = new Vector3Int(0, 40, 2);
+        [SerializeField]
+        protected bool rotationOnly = false;
+
+        public override bool RotationOnly => rotationOnly;
 
         private Matrix4x4 SolveForPos(Vector3 sensorPos, Vector3[] refPoints, Vector3[] obsDirections)
         {
@@ -35,6 +39,12 @@ namespace PupilLabs.Calibration
 
         protected override async Task<Matrix4x4> Solve(Vector3[] refPoints, Vector3[] obsDirections, CancellationToken token)
         {
+            if (rotationOnly)
+            {
+                Matrix4x4 tm = await Task.Run(() => SolveForPos(fallbackPos, refPoints, obsDirections));
+                return tm;
+            }
+
             Matrix4x4 bestSolution = Matrix4x4.identity;
             float bestError = float.PositiveInfinity;
 

@@ -13,6 +13,7 @@ namespace PupilLabs.Calibration
         [SerializeField] protected Transform pointParent;
         [SerializeField] protected GameObject referencePointPrefab;
         [SerializeField] protected GameObject transformedPointPrefab;
+        [SerializeField] protected Vector3 fallbackPos = Vector3.zero;
 
         protected List<GameObject> pointStash = null;
         protected List<Vector3> observedDirections = null;
@@ -20,6 +21,12 @@ namespace PupilLabs.Calibration
         protected Matrix4x4 solution = Matrix4x4.identity;
         protected float error = 0.0f;
 
+        public Vector3 FallbackPos
+        {
+            get { return fallbackPos; }
+            set { fallbackPos = value; }
+        }
+        public abstract bool RotationOnly { get; }
         public bool Ready { get; private set; } = false;
         public Matrix4x4 Solution { get { return solution; } }
         public float Error { get { return error; } }
