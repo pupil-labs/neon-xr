@@ -20,7 +20,7 @@ namespace PupilLabs
         public DnsDiscovery(IPAddress ip, int port)
         {
             socket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
-            socket.ReceiveTimeout = 1000;
+            socket.Blocking = false;
             socket.Bind(new IPEndPoint(ip, port));
         }
 
@@ -45,17 +45,24 @@ namespace PupilLabs
             {
                 await SendDiscoveryQuery();
                 Debug.Log($"[DnsDiscovery] waiting for responses {i + 1}/{tryCount}");
+
+                int delay = 100;
+                int sum = 0;
+                int maxDelay = 1000;
                 while (true) //handle responses from multiple devices
                 {
-                    try
+                    socket.Receive(buffer, SocketFlags.None, out var err);
+                    if (err != SocketError.Success)
                     {
-                        await Task.Run(() => socket.Receive(buffer)); //timeout ignored with async call and token based timeout corrupts socket
-                    }
-                    catch (SocketException e)
-                    {
-                        Debug.Log("[DnsDiscovery] no device responded in time");
-                        Debug.Log(e.Message);
-                        break;
+                        await Task.Delay(delay);
+                        sum += delay;
+
+                        if (sum > maxDelay)
+                        {
+                            Debug.Log("[DnsDiscovery] no device responded in time");
+                            break;
+                        }
+                        continue;
                     }
                     DnsPacket packet = new DnsPacket(new KaitaiStream(buffer));
                     IPAddress ip = null;
