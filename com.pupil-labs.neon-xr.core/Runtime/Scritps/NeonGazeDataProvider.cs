@@ -37,8 +37,9 @@ namespace PupilLabs
         private bool rtspAutoReconnect = true;
 
         private volatile bool dataReceived = false;
-        private GazeData gazeData;
 
+        public GazeData RawGazeData { get { return gazeData; } }
+        private GazeData gazeData;
         public RTSPClient RTSPClient { get { return rtspClient; } }
         private RTSPClient rtspClient;
         public override Vector3 RawGazeDir { get { return rawGazeDir; } }
@@ -101,6 +102,11 @@ namespace PupilLabs
         public void OnGazeDataReceived(object sender, EventArgs e)
         {
             dataReceived = true;
+        }
+
+        public void ForceUpdateRawGazeDir(Vector2 gazePoint) //TODO buffer expose per update?
+        {
+            rawGazeDir = CameraUtils.ImgPointToDir(gazePoint, storage.CameraIntrinsics.cameraMatrix, storage.CameraIntrinsics.distortionCoefficients);
         }
 
         private void Update()
