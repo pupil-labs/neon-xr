@@ -20,7 +20,7 @@ namespace PupilLabs.Serializable
     public class GazeDataProviderEvent : UnityEvent<GazeDataProvider> { };
 
     [Serializable]
-    public class RaycastHitEvent : UnityEvent<RaycastHit> { };
+    public class RaycastHitEvent : UnityEvent<Transform, Vector3> { };
 
     [Serializable]
     public class DStringEvent : UnityEvent<string, string> { };

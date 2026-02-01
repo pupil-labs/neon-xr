@@ -28,7 +28,7 @@ namespace PupilLabs
         [SerializeField]
         protected float raycastDistance = 10f;
 
-        public Serializable.Vector3Event onHit;
+        public Serializable.RaycastHitEvent onHit;
 
         protected Vector3 localGazeOrigin = Vector3.zero;
         protected Vector3 localGazeDirection = Vector3.forward;
@@ -86,7 +86,7 @@ namespace PupilLabs
                 RaycastHit hit;
                 if (Physics.Raycast(worldOrigin, worldDirection, out hit, raycastDistance, raycastMask))
                 {
-                    onHit.Invoke(hit.point);
+                    onHit.Invoke(hit.transform, hit.point);
                     raycastPointer.transform.position = hit.point;
                     raycastPointer.SetActive(raycastPointerVisible);
                     return hit.distance;
