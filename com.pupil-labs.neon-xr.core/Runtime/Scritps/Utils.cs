@@ -126,11 +126,13 @@ namespace PupilLabs
 
         public static byte[] NetworkBytesToLocal(byte[] networkBytes, int startIndex, int count)
         {
-            byte[] localBytes = networkBytes.Skip(startIndex).Take(count).ToArray();
+            byte[] localBytes = networkBytes.AsSpan(startIndex, count).ToArray();
+
             if (BitConverter.IsLittleEndian)
             {
-                Array.Reverse(localBytes);
+                localBytes.AsSpan().Reverse();
             }
+
             return localBytes;
         }
     }
