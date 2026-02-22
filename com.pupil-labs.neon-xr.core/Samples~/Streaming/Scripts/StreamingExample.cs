@@ -47,6 +47,7 @@ namespace PupilLabs
 
         //data buffers
         private float[] gazePoint = new float[2];
+        private float[] gazePointDualLeft = new float[2];
         private float[] gazePointDualRight = new float[2];
         private float[] eyeStateLeft = new float[7];
         private float[] eyeStateRight = new float[7];
@@ -167,7 +168,7 @@ namespace PupilLabs
                     gazeDataCopy = gazeData;
                 }
                 gazePointMarker.localPosition = new Vector3(gazeDataCopy.gazePoint[0] / worldCamRes.x, gazeDataCopy.gazePoint[1] / worldCamRes.y, 0);
-                eyeStateVisualizer.SetGazeData((int)gazeDataCopy.type >= 2, gazeDataCopy.eyeState, gazeDataCopy.type == EtDataType.EyeStateEyelidGazeData, gazeDataCopy.eyelid);
+                eyeStateVisualizer.SetGazeData(gazeDataCopy.type >= EtDataType.EyeStateEyelidGazeData, gazeDataCopy.eyeState, gazeDataCopy.type >= EtDataType.EyeStateEyelidGazeData, gazeDataCopy.eyelid);
 
                 if (fixationOnSet)
                 {
@@ -186,7 +187,7 @@ namespace PupilLabs
             if (streamId == (int)StreamId.Gaze)
             {
                 bool worn = false;
-                EtDataType dataType = RTSPServiceWrapper.BytesToGazeData(data, dataSize, 0, gazePoint, out worn, gazePointDualRight, eyeStateLeft, eyeStateRight, eyelidLeft, eyelidRight);
+                EtDataType dataType = RTSPServiceWrapper.BytesToGazeData(data, dataSize, 0, gazePoint, out worn, gazePointDualLeft, gazePointDualRight, eyeStateLeft, eyeStateRight, eyelidLeft, eyelidRight);
                 lock (gazeLock)
                 {
                     gazeData.SetData(dataType, gazePoint, worn, gazePointDualRight, eyeStateLeft, eyeStateRight, eyelidLeft, eyelidRight, timestampMs, rtcpSynchronized);

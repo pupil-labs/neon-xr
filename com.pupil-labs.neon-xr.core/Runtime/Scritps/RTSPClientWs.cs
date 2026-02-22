@@ -22,6 +22,7 @@ namespace PupilLabs
 
         private float[] gazePoint = new float[2];
         private bool worn;
+        private float[] gazePointDualLeft = new float[2];
         private float[] gazePointDualRight = new float[2];
         private float[] eyeStateLeft = new float[7];
         private float[] eyeStateRight = new float[7];
@@ -156,7 +157,7 @@ namespace PupilLabs
                         {
                             etDataType = RTSPServiceWrapper.BytesToGazeData(
                                 messageBuffer, (uint)messageStream.Length, dataOffset,
-                                gazePoint, out worn, gazePointDualRight,
+                                gazePoint, out worn, gazePointDualLeft, gazePointDualRight,
                                 eyeStateLeft, eyeStateRight,
                                 eyelidLeft, eyelidRight
                             );

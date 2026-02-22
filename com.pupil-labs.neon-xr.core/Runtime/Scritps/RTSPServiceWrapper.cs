@@ -26,8 +26,10 @@ namespace PupilLabs
     {
         GazeData = 0,
         DualMonocularGazeData = 1,
-        EyeStateGazeData = 2,
-        EyeStateEyelidGazeData = 3,
+        BinoAndDualMonoGazeData = 2,
+        EyeStateGazeData = 3,
+        EyeStateEyelidGazeData = 4,
+        EyeStateEyelidDualMonoGazeData = 5,
         Unknown = -1
     }
 
@@ -81,6 +83,7 @@ namespace PupilLabs
             uint offset,
             [Out] float[] gazePoint,          // length 2
             [MarshalAs(UnmanagedType.I1)] out bool worn,
+            [Out] float[] gazePointDualLeft,  // length 2
             [Out] float[] gazePointDualRight, // length 2
             [Out] float[] eyeStateLeft,       // length 7
             [Out] float[] eyeStateRight,      // length 7
@@ -94,6 +97,7 @@ namespace PupilLabs
             uint offset,
             float[] gazePoint,
             out bool worn,
+            float[] gazePointDualLeft,
             float[] gazePointDualRight,
             float[] eyeStateLeft,
             float[] eyeStateRight,
@@ -102,7 +106,7 @@ namespace PupilLabs
         {
             EtDataType res = pl_bytes_to_eye_tracking_data(
                 data, dataSize, offset,
-                gazePoint, out worn, gazePointDualRight,
+                gazePoint, out worn, gazePointDualLeft, gazePointDualRight,
                 eyeStateLeft, eyeStateRight,
                 eyelidLeft, eyelidRight
             );
@@ -146,6 +150,7 @@ namespace PupilLabs
             uint offset,
             float[] gazePoint,
             out bool worn,
+            float[] gazePointDualLeft,
             float[] gazePointDualRight,
             float[] eyeStateLeft,
             float[] eyeStateRight,
@@ -158,7 +163,7 @@ namespace PupilLabs
             {
                 return BytesToGazeData(
                     handle.AddrOfPinnedObject(), dataSize, offset,
-                    gazePoint, out worn, gazePointDualRight,
+                    gazePoint, out worn, gazePointDualLeft, gazePointDualRight,
                     eyeStateLeft, eyeStateRight,
                     eyelidLeft, eyelidRight
                 );
