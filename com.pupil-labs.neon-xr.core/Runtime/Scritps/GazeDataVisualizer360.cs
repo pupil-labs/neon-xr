@@ -29,7 +29,7 @@ namespace PupilLabs
                             hit = hit2;
                         }
                     }
-                    onHit.Invoke(hit.transform, hit.point);
+                    onHit.Invoke(hit.transform, hit.point, hit.textureCoord);
                     if (raycastPointerVisible)
                     {
                         raycastPointer.transform.position = hit.point;

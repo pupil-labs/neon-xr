@@ -86,7 +86,7 @@ namespace PupilLabs
                 RaycastHit hit;
                 if (Physics.Raycast(worldOrigin, worldDirection, out hit, raycastDistance, raycastMask))
                 {
-                    onHit.Invoke(hit.transform, hit.point);
+                    onHit.Invoke(hit.transform, hit.point, hit.textureCoord);
                     raycastPointer.transform.position = hit.point;
                     raycastPointer.SetActive(raycastPointerVisible);
                     return hit.distance;
