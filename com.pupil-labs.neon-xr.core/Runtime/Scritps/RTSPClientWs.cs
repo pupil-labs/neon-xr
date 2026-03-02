@@ -41,7 +41,7 @@ namespace PupilLabs
             {
                 lock (dataLock)
                 {
-                    gazeData.SetData(etDataType, gazePoint, worn, gazePointDualRight, eyeStateLeft, eyeStateRight, eyelidLeft, eyelidRight);
+                    gazeData.SetData(etDataType, gazePoint, worn, gazePointDualLeft, gazePointDualRight, eyeStateLeft, eyeStateRight, eyelidLeft, eyelidRight);
                     return gazeData;
                 }
             }

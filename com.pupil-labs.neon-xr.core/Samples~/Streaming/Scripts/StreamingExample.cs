@@ -23,6 +23,10 @@ namespace PupilLabs
         [SerializeField]
         private Transform gazePointMarker;
         [SerializeField]
+        private Transform gazePointDualLeftMarker;
+        [SerializeField]
+        private Transform gazePointDualRightMarker;
+        [SerializeField]
         private GameObject fixationMarker;
         [SerializeField]
         private Vector2Int worldCamRes = new Vector2Int(1600, 1200);
@@ -168,6 +172,8 @@ namespace PupilLabs
                     gazeDataCopy = gazeData;
                 }
                 gazePointMarker.localPosition = new Vector3(gazeDataCopy.gazePoint[0] / worldCamRes.x, gazeDataCopy.gazePoint[1] / worldCamRes.y, 0);
+                gazePointDualLeftMarker.localPosition = new Vector3(gazeDataCopy.gazePointDualLeft[0] / worldCamRes.x, gazeDataCopy.gazePointDualLeft[1] / worldCamRes.y, 0);
+                gazePointDualRightMarker.localPosition = new Vector3(gazeDataCopy.gazePointDualRight[0] / worldCamRes.x, gazeDataCopy.gazePointDualRight[1] / worldCamRes.y, 0);
                 eyeStateVisualizer.SetGazeData(gazeDataCopy.type >= EtDataType.EyeStateEyelidGazeData, gazeDataCopy.eyeState, gazeDataCopy.type >= EtDataType.EyeStateEyelidGazeData, gazeDataCopy.eyelid);
 
                 if (fixationOnSet)
@@ -190,7 +196,7 @@ namespace PupilLabs
                 EtDataType dataType = RTSPServiceWrapper.BytesToGazeData(data, dataSize, 0, gazePoint, out worn, gazePointDualLeft, gazePointDualRight, eyeStateLeft, eyeStateRight, eyelidLeft, eyelidRight);
                 lock (gazeLock)
                 {
-                    gazeData.SetData(dataType, gazePoint, worn, gazePointDualRight, eyeStateLeft, eyeStateRight, eyelidLeft, eyelidRight, timestampMs, rtcpSynchronized);
+                    gazeData.SetData(dataType, gazePoint, worn, gazePointDualLeft, gazePointDualRight, eyeStateLeft, eyeStateRight, eyelidLeft, eyelidRight, timestampMs, rtcpSynchronized);
                 }
                 gazeDataReceived = true;
                 Debug.Log($"Decoded gaze data: {gazeData}");

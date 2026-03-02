@@ -4,11 +4,12 @@ namespace PupilLabs
 {
     public struct GazeData
     {
-        public void SetData(EtDataType type, float[] gazePoint, bool worn, float[] gazePointDualRight, float[] eyeStateLeft, float[] eyeStateRight, float[] eyelidLeft, float[] eyelidRight, long timestampMs = 0, bool rtcpSynchronized = false)
+        public void SetData(EtDataType type, float[] gazePoint, bool worn, float[] gazePointDualLeft, float[] gazePointDualRight, float[] eyeStateLeft, float[] eyeStateRight, float[] eyelidLeft, float[] eyelidRight, long timestampMs = 0, bool rtcpSynchronized = false)
         {
             this.type = type;
             this.gazePoint.Set(gazePoint[0], gazePoint[1]);
             this.worn = worn;
+            this.gazePointDualLeft.Set(gazePointDualLeft[0], gazePointDualLeft[1]);
             this.gazePointDualRight.Set(gazePointDualRight[0], gazePointDualRight[1]);
             this.eyeState.SetData(eyeStateLeft, eyeStateRight);
             this.eyelid.SetData(eyelidLeft, eyelidRight);
@@ -26,6 +27,7 @@ namespace PupilLabs
         public EtDataType type;
         public Vector2 gazePoint;
         public bool worn;
+        public Vector2 gazePointDualLeft;
         public Vector2 gazePointDualRight;
         public EyeState eyeState;
         public Eyelid eyelid;
