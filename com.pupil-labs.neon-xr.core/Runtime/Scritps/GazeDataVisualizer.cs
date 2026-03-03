@@ -96,13 +96,6 @@ namespace PupilLabs
             return -1f;
         }
 
-        {
-
-            {
-            }
-
-        }
-
         protected virtual void OnDisable()
         {
             if (registerOnEnable)
