@@ -37,7 +37,6 @@ namespace PupilLabs
         public bool DoRaycast { get { return doRaycast; } set { doRaycast = value; } }
         public bool RaycastPointerVisible { get { return raycastPointerVisible; } set { raycastPointerVisible = value; } }
 
-
         protected virtual void OnEnable()
         {
             if (registerOnEnable)
