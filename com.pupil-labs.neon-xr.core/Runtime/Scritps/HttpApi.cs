@@ -24,11 +24,11 @@ namespace PupilLabs
         public System.Collections.IEnumerator SendEvent(string name)
         {
             long beforeMs = RTSPServiceWrapper.UnixTimeMs();
-            long time_in_neon = beforeMs - timeOffset;
+            long time_in_neon_ns = (beforeMs - timeOffset) * 1000000;
 
             Debug.Log("Sending Neon Event...");
 
-            using (UnityWebRequest www = UnityWebRequest.Post($"http://{deviceManager.SelectedDeviceIp}:8080/api/event", $"{{\"name\": {name}, \"timestamp\": {time_in_neon}}}", "application/json"))
+            using (UnityWebRequest www = UnityWebRequest.Post($"http://{deviceManager.SelectedDeviceIp}:8080/api/event", $"{{\"name\": {name}, \"timestamp\": {time_in_neon_ns}}}", "application/json"))
             {
                 yield return www.SendWebRequest();
 
@@ -47,9 +47,6 @@ namespace PupilLabs
 
         public System.Collections.IEnumerator RecordingStart()
         {
-            long beforeMs = RTSPServiceWrapper.UnixTimeMs();
-            long time_in_neon = beforeMs - timeOffset;
-
             Debug.Log("Starting Neon recording...");
 
             using (UnityWebRequest www = UnityWebRequest.Post($"http://{deviceManager.SelectedDeviceIp}:8080/api/event", "", "application/json"))
@@ -71,9 +68,6 @@ namespace PupilLabs
 
         public System.Collections.IEnumerator RecordingStopAndSave()
         {
-            long beforeMs = RTSPServiceWrapper.UnixTimeMs();
-            long time_in_neon = beforeMs - timeOffset;
-
             Debug.Log("Stopping and saving Neon recording...");
 
             using (UnityWebRequest www = UnityWebRequest.Post($"http://{deviceManager.SelectedDeviceIp}:8080/api/event", "", "application/json"))
@@ -95,9 +89,6 @@ namespace PupilLabs
 
         public System.Collections.IEnumerator RecordingCancel()
         {
-            long beforeMs = RTSPServiceWrapper.UnixTimeMs();
-            long time_in_neon = beforeMs - timeOffset;
-
             Debug.Log("Cancelling Neon recording...");
 
             using (UnityWebRequest www = UnityWebRequest.Post($"http://{deviceManager.SelectedDeviceIp}:8080/api/event", "", "application/json"))
