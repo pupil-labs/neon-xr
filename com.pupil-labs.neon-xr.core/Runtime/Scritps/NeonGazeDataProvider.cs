@@ -77,7 +77,6 @@ namespace PupilLabs
                     if (await deviceManager.Discover() && deviceManager.SelectAnyDevice())
                     {
                         ip = deviceManager.SelectedDeviceIp;
-                        deviceManager.StartTimeOffsetEstimation();
                     }
                     else
                     {

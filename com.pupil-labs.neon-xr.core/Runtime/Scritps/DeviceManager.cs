@@ -14,6 +14,8 @@ namespace PupilLabs
     {
         [SerializeField]
         private DataStorage storage;
+        [SerializeField]
+        private int repeatOffsetEstimationAfterMs = -1; // If > 0 no run, if == 0 run once, else repeat periodically
 
         public DStringEvent selectionChanged;
         public DeviceManagerEvent discoveryFinished;
@@ -23,9 +25,15 @@ namespace PupilLabs
         private Dictionary<string, string> discoveredDevices = null;
         private Task<bool> discoveryTask = null;
         private string selectedDeviceIp = null;
+        private CancellationTokenSource periodicOffsetCts = new CancellationTokenSource();
 
         public IReadOnlyDictionary<string, string> DiscoveredDevices { get { return discoveredDevices; } }
         public string SelectedDeviceIp { get { return selectedDeviceIp; } }
+
+        private async void Awake()
+        {
+            await PeriodicTimeOffsetEstimationLoop(repeatOffsetEstimationAfterMs, periodicOffsetCts.Token);
+        }
 
         public bool SelectAnyDevice()
         {
@@ -93,6 +101,7 @@ namespace PupilLabs
         private void OnDestroy()
         {
             dnsDiscovery?.Abort();
+            periodicOffsetCts.Cancel();
         }
 
         public void StartTimeOffsetEstimation()
@@ -156,6 +165,35 @@ namespace PupilLabs
                 }
             }
             return offsetSum / n;
+        }
+
+        private async Task PeriodicTimeOffsetEstimationLoop(int waitMs, CancellationToken token)
+        {
+            if (waitMs < 0)
+            {
+                return;
+            }
+
+            try
+            {
+                while (!token.IsCancellationRequested)
+                {
+                    if (selectedDeviceIp != null)
+                    {
+                        await EstimateTimeOffset(token);
+                        if (waitMs == 0) break;
+                    }
+                    await Task.Delay(Mathf.Max(waitMs, 100), token);
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                Debug.Log("[DeviceManager] Periodic time offset loop cancelled");
+            }
+            catch (Exception e)
+            {
+                Debug.LogError($"[DeviceManager] Periodic time offset loop crashed: {e.Message}");
+            }
         }
     }
 }
