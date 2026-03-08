@@ -15,7 +15,7 @@ namespace PupilLabs
         [SerializeField]
         private DataStorage storage;
         [SerializeField]
-        private int repeatOffsetEstimationAfterMs = -1; // If > 0 no run, if == 0 run once, else repeat periodically
+        private int repeatOffsetEstimationAfterMs = -1; // If < 0 no run, if == 0 run once, else repeat periodically
 
         public DStringEvent selectionChanged;
         public DeviceManagerEvent discoveryFinished;
