@@ -1,7 +1,4 @@
-using PupilLabs.Serializable;
 using System;
-using System.Net;
-using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -12,7 +9,7 @@ namespace PupilLabs
         [SerializeField]
         private DataStorage storage;
         [SerializeField]
-        private DeviceManager deviceManager;
+        private GazeDataSource gazeDataSource;
         [SerializeField]
         private bool simulationEnabled = false;
         [SerializeField]
@@ -33,14 +30,11 @@ namespace PupilLabs
         private float simulatedGazeDistance = 1f;
         [SerializeField]
         private float simulatedPupilDiameter = 0.004f;
-        [SerializeField]
-        private bool rtspAutoReconnect = true;
 
         private volatile bool dataReceived = false;
-        private GazeData gazeData;
+        private IGazeDataSource lockedGazeDataSource = null;
 
-        public RTSPClient RTSPClient { get { return rtspClient; } }
-        private RTSPClient rtspClient;
+        public bool Ready { get; private set; } = false;
         public override Vector3 RawGazeDir { get { return rawGazeDir; } }
         private Vector3 rawGazeDir = Vector3.forward;
         public override Vector2 RawGazePoint { get { return rawGazePoint; } }
@@ -54,57 +48,33 @@ namespace PupilLabs
         public override Eyelid RawEyelid { get { return rawEyelid; } }
         private Eyelid rawEyelid;
 
-
         private async void Awake()
         {
+            if (gazeDataSource != null)
+            {
+                lockedGazeDataSource = gazeDataSource;
+            }
+
             rawGazePoint = simulatedResolution * 0.5f;
 
             await storage.WhenReady();
             Serializable.Pose offset = storage.Config.sensorCalibration.offset;
             SetGazeOrigin(offset.position.ToVector3(), offset.rotation.ToVector3());
 
-            if (simulationEnabled)
-            {
-                return;
-            }
-
-            do
-            {
-                RTSPSettings rtspSettings = storage.Config.rtspSettings;
-                string ip = rtspSettings.ip;
-                if (rtspSettings.autoIp)
-                {
-                    if (await deviceManager.Discover() && deviceManager.SelectAnyDevice())
-                    {
-                        ip = deviceManager.SelectedDeviceIp;
-                    }
-                    else
-                    {
-                        Debug.Log("[NeonGazeDataProvider] no device discovered");
-                        continue;
-                    }
-                }
-
-                using (
-                    rtspClient = rtspSettings.useUdp ?
-                        new RTSPClientLive555(ip, rtspSettings.port) :
-                        new RTSPClientWs(ip, rtspSettings.port)
-                )
-                {
-                    rtspClient.GazeDataReceived += OnGazeDataReceived;
-                    await rtspClient.RunAsync();
-                }
-                rtspClient = null;
-            } while (rtspAutoReconnect == true);
+            Ready = true;
         }
 
-        public void OnGazeDataReceived(object sender, EventArgs e)
+        private void OnGazeDataReceived()
         {
             dataReceived = true;
         }
 
         private void Update()
         {
+            if (Ready == false)
+            {
+                return;
+            }
             if (dataReceived || simulationEnabled)
             {
                 if (simulationEnabled)
@@ -114,9 +84,9 @@ namespace PupilLabs
                         Mathf.Clamp(rawGazePoint.y - simulatedLookVertical.action.ReadValue<float>() * simulationSensitivity, 0, simulatedResolution.y)
                     );
                 }
-                else if (rtspClient != null)
+                else if (lockedGazeDataSource != null)
                 {
-                    gazeData = rtspClient.GazeData;
+                    GazeData gazeData = lockedGazeDataSource.GazeData;
                     rawGazePoint = gazeData.gazePoint;
                     eyeStateAvailable = gazeData.type >= EtDataType.EyeStateGazeData;
                     rawEyeState = gazeData.eyeState;
@@ -146,10 +116,21 @@ namespace PupilLabs
             }
         }
 
-        private void OnDestroy()
+        private void OnEnable()
         {
-            rtspAutoReconnect = false;
-            rtspClient?.Stop();
+            dataReceived = false;
+            if (lockedGazeDataSource != null)
+            {
+                lockedGazeDataSource.GazeDataReceived += OnGazeDataReceived;
+            }
+        }
+
+        private void OnDisable()
+        {
+            if (lockedGazeDataSource != null)
+            {
+                lockedGazeDataSource.GazeDataReceived -= OnGazeDataReceived;
+            }
         }
     }
 }

@@ -13,39 +13,15 @@ namespace PupilLabs
     {
         private readonly string ip;
         private readonly int port;
-        private readonly object dataLock = new object();
-        private GazeData gazeData = new GazeData();
 
         private readonly byte[] receiveBuffer = new byte[4096];
         private readonly byte[] messageBuffer = new byte[8192];
         private readonly MemoryStream messageStream = null;
 
-        private float[] gazePoint = new float[2];
-        private bool worn;
-        private float[] gazePointDualLeft = new float[2];
-        private float[] gazePointDualRight = new float[2];
-        private float[] eyeStateLeft = new float[7];
-        private float[] eyeStateRight = new float[7];
-        private float[] eyelidLeft = new float[3];
-        private float[] eyelidRight = new float[3];
-        private EtDataType etDataType = EtDataType.Unknown;
-
         CancellationTokenSource timeoutCts;
         CancellationToken timeoutToken;
         CancellationToken stopToken;
         CancellationToken stopOrTimeoutToken;
-
-        public override GazeData GazeData
-        {
-            get
-            {
-                lock (dataLock)
-                {
-                    gazeData.SetData(etDataType, gazePoint, worn, gazePointDualLeft, gazePointDualRight, eyeStateLeft, eyeStateRight, eyelidLeft, eyelidRight);
-                    return gazeData;
-                }
-            }
-        }
 
         public RTSPClientWs(string ip, int port)
         {
@@ -139,37 +115,21 @@ namespace PupilLabs
         {
             int msgCounter = 0;
             int msgsPerTimer = 200;
-            int msgsPerLog = msgsPerTimer * 10;
             uint dataOffset = 12;
             //read data (mixed)
             await Task.Run(async () =>
             {
                 while (stopToken.IsCancellationRequested == false)
                 {
-                    if (msgCounter % msgsPerTimer == 0)
+                    if (msgCounter++ == msgsPerTimer)
                     {
+                        msgCounter = 0;
                         timeoutCts.CancelAfter(readTimeout);
                     }
                     bool binaryMessageReceived = await ReceiveMessageAsync(ws, timeoutToken);
                     if (binaryMessageReceived && GetRTPType(messageBuffer) == 99)
                     {
-                        lock (dataLock)
-                        {
-                            etDataType = RTSPServiceWrapper.BytesToGazeData(
-                                messageBuffer, (uint)messageStream.Length, dataOffset,
-                                gazePoint, out worn, gazePointDualLeft, gazePointDualRight,
-                                eyeStateLeft, eyeStateRight,
-                                eyelidLeft, eyelidRight
-                            );
-                        }
-
-                        OnGazeDataReceived();
-
-                        if (++msgCounter == msgsPerLog)
-                        {
-                            Debug.Log($"[RTSPClientWs] {msgsPerLog} messages processed");
-                            msgCounter = 0;
-                        }
+                        OnDataReceived(0, false, 0, (byte)StreamId.Gaze, (uint)messageStream.Length, dataOffset, messageBuffer);
                     }
                 }
                 timeoutCts.CancelAfter(Timeout.Infinite);

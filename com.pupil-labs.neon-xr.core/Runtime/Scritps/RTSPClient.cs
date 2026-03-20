@@ -5,15 +5,21 @@ using UnityEngine;
 
 namespace PupilLabs
 {
+    public delegate void DataHandler(
+        long timestampMs,
+        bool rtcpSynchronized,
+        byte streamId,
+        byte payloadFormat,
+        uint dataSize,
+        IntPtr data);
+
     public abstract class RTSPClient : Disposable
     {
-        public event EventHandler GazeDataReceived;
+        public event DataHandler DataReceived;
 
         protected CancellationTokenSource stopCts = null;
 
         public abstract Task RunAsync();
-
-        public abstract GazeData GazeData { get; }
 
         public virtual void Stop()
         {
@@ -27,9 +33,21 @@ namespace PupilLabs
             }
         }
 
-        protected virtual void OnGazeDataReceived()
+        protected virtual unsafe void OnDataReceived(long timestampMs, bool rtcpSynchronized, byte streamId, byte payloadFormat, uint dataSize, uint dataOffset, byte[] data)
         {
-            GazeDataReceived?.Invoke(this, EventArgs.Empty);
+            fixed (byte* p = &data[dataOffset])
+            {
+                OnDataReceived(timestampMs, rtcpSynchronized, streamId, payloadFormat, dataSize - dataOffset, (IntPtr)p);
+            }
+        }
+
+        protected virtual void OnDataReceived(long timestampMs, bool rtcpSynchronized, byte streamId, byte payloadFormat, uint dataSize, IntPtr data)
+        {
+            DataHandler handler = DataReceived;
+            if (handler != null)
+            {
+                handler(timestampMs, rtcpSynchronized, streamId, payloadFormat, dataSize, data);
+            }
         }
     }
 }
