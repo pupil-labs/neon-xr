@@ -101,7 +101,7 @@ namespace PupilLabs
 
     public static class NetworkUtils
     {
-        public static IPAddress[] GetLocalIPAddresses()
+        public static IPAddress[] GetLocalIpAddresses()
         {
             List<IPAddress> addresses = new List<IPAddress>();
             Debug.Log("[NetworkUtils] getting local IP address");

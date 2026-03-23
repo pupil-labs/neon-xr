@@ -16,6 +16,8 @@ namespace PupilLabs
         private DataStorage storage;
         [SerializeField]
         private int repeatOffsetEstimationAfterMs = -1; // If < 0 no run, if == 0 run once, else repeat periodically
+        [SerializeField]
+        private bool tryAllLocalIps = false;
 
         public DStringEvent selectionChanged;
         public DeviceManagerEvent discoveryFinished;
@@ -62,27 +64,45 @@ namespace PupilLabs
             Discover().Forget();
         }
 
-        public Task<bool> Discover()
+        public Task<bool> Discover(string name = "")
         {
             if (discoveryTask != null && !discoveryTask.IsCompleted)
             {
                 return discoveryTask;
             }
 
-            discoveryTask = DiscoverDevices();
+            discoveryTask = DiscoverDevices(name);
             return discoveryTask;
         }
 
-        private async Task<bool> DiscoverDevices()
+        private async Task<bool> DiscoverDevices(string name)
         {
             await storage.WhenReady();
             int dnsPort = storage.Config.rtspSettings.dnsPort;
             try
             {
-                using (dnsDiscovery = new DnsDiscovery(IPAddress.Any, dnsPort))
+                IPAddress[] localIps = new IPAddress[] { IPAddress.Any };
+                if (tryAllLocalIps)
                 {
-                    discoveredDevices = await dnsDiscovery.DiscoverDevices();
+                    IPAddress[] allLocalIps = await Task.Run(() => NetworkUtils.GetLocalIpAddresses());
+                    if (allLocalIps.Length > 0)
+                    {
+                        localIps = allLocalIps;
+                    }
                 }
+                Dictionary<string, string> mergedDevices = new Dictionary<string, string>();
+                foreach (IPAddress ip in localIps)
+                {
+                    Debug.Log($"[DeviceManager] Attempting discovery on network adapter: {ip}");
+                    using (dnsDiscovery = new DnsDiscovery(ip, dnsPort))
+                    {
+                        foreach (var kvp in await dnsDiscovery.DiscoverDevices(name))
+                        {
+                            mergedDevices[kvp.Key] = kvp.Value;
+                        }
+                    }
+                }
+                discoveredDevices = mergedDevices.Count > 0 ? mergedDevices : null;
             }
             catch (ObjectDisposedException e)
             {
