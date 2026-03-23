@@ -1,18 +1,25 @@
 using PupilLabs.Serializable;
 using System;
+using Stopwatch = System.Diagnostics.Stopwatch;
 using UnityEngine;
+using System.Threading.Tasks;
 
 namespace PupilLabs
 {
     public class EyeTrackingDataReceiver : GazeDataSource
     {
+        public event RTSPDataHandler DataReceived;
+
         [SerializeField]
         protected DataStorage storage;
         [SerializeField]
         protected DeviceManager deviceManager;
         [SerializeField]
-        protected bool rtspAutoReconnect = true;
+        protected bool connectOnAwake = true;
+        [SerializeField]
+        protected bool autoReconnect = true;
 
+        protected bool shouldReconnect = false;
         protected RTSPClient rtspClient = null;
 
         protected float[] gazePoint = new float[2];
@@ -30,10 +37,13 @@ namespace PupilLabs
         protected readonly object dataLock = new object();
         protected GazeData gazeData = new GazeData();
 
+        protected const int gazeMsgsPerLog = 2000;
+        protected int gazeMsgCounter = 0;
+
         protected const int readTimeout = 7500;
-        protected const int msgsPerTimer = 200;
-        protected const int msgsPerLog = msgsPerTimer * 10;
-        protected int msgCounter = 0;
+        protected Stopwatch timeoutWatch = new Stopwatch();
+
+        public bool IsRunning { get; private set; } = false;
 
         public override GazeData GazeData
         {
@@ -47,41 +57,86 @@ namespace PupilLabs
             }
         }
 
-        protected virtual async void Awake()
+        protected virtual void Awake()
         {
-            await storage.WhenReady();
-            do
+            if (connectOnAwake)
             {
-                RTSPSettings rtspSettings = storage.Config.rtspSettings;
-                string ip = rtspSettings.ip;
-                if (rtspSettings.autoIp)
-                {
-                    if (await deviceManager.Discover() && deviceManager.SelectAnyDevice())
-                    {
-                        ip = deviceManager.SelectedDeviceIp;
-                    }
-                    else
-                    {
-                        Debug.Log("[EyeTrackingDataReceiver] no device discovered");
-                        continue;
-                    }
-                }
+                Connect();
+            }
+        }
 
-                using (
-                    rtspClient = rtspSettings.useUdp ?
-                        new RTSPClientLive555(ip, rtspSettings.port) :
-                        new RTSPClientWs(ip, rtspSettings.port)
-                )
+        public virtual void Connect(string ip = null)
+        {
+            RunAsync(ip).Forget();
+        }
+
+        protected virtual async Task RunAsync(string ip = null)
+        {
+            if (IsRunning)
+            {
+                return;
+            }
+            IsRunning = true;
+
+            shouldReconnect = autoReconnect;
+
+            try
+            {
+                await storage.WhenReady();
+                do
                 {
-                    rtspClient.DataReceived += OnDataReceived;
-                    await rtspClient.RunAsync();
-                }
-                rtspClient = null;
-            } while (rtspAutoReconnect == true);
+                    RTSPSettings rtspSettings = storage.Config.rtspSettings;
+                    string currentIp = ip;
+                    if (string.IsNullOrEmpty(currentIp))
+                    {
+                        currentIp = rtspSettings.ip;
+                        if (rtspSettings.autoIp)
+                        {
+                            if (await deviceManager.Discover(rtspSettings.deviceName) && deviceManager.SelectAnyDevice())
+                            {
+                                currentIp = deviceManager.SelectedDeviceIp;
+                            }
+                            else
+                            {
+                                Debug.Log("[EyeTrackingDataReceiver] no device discovered");
+                                await Task.Delay(1000);
+                                continue;
+                            }
+                        }
+                    }
+
+                    timeoutWatch.Restart();
+
+                    using (
+                        rtspClient = rtspSettings.useUdp ?
+                            new RTSPClientLive555(currentIp, rtspSettings.port) :
+                            new RTSPClientWs(currentIp, rtspSettings.port)
+                    )
+                    {
+                        rtspClient.DataReceived += OnDataReceived;
+                        await rtspClient.RunAsync();
+                        rtspClient.DataReceived -= OnDataReceived;
+                    }
+                    rtspClient = null;
+                    if (shouldReconnect)
+                    {
+                        await Task.Delay(1000);
+                    }
+                } while (shouldReconnect == true);
+            }
+            finally
+            {
+                IsRunning = false;
+                timeoutWatch.Stop();
+            }
         }
 
         protected virtual void OnDataReceived(long timestampMs, bool rtcpSynchronized, byte streamId, byte payloadFormat, uint dataSize, IntPtr data)
         {
+            timeoutWatch.Restart();
+
+            DataReceived?.Invoke(timestampMs, rtcpSynchronized, streamId, payloadFormat, dataSize, data);
+
             StreamId sid = (StreamId)streamId;
             if (sid == StreamId.Gaze)
             {
@@ -104,19 +159,33 @@ namespace PupilLabs
             }
             OnGazeDataReceived();
 
-            if (++msgCounter == msgsPerLog)
+            if (++gazeMsgCounter == gazeMsgsPerLog)
             {
-                Debug.Log($"[EyeTrackingDataReceiver] {msgsPerLog} messages with gaze data processed");
-                msgCounter = 0;
+                Debug.Log($"[EyeTrackingDataReceiver] {gazeMsgsPerLog} messages with gaze data processed");
+                gazeMsgCounter = 0;
             }
         }
 
-        private void OnDestroy()
+        protected virtual void Update()
         {
-            rtspAutoReconnect = false;
+            if (timeoutWatch.IsRunning && timeoutWatch.ElapsedMilliseconds > readTimeout)
+            {
+                Debug.LogWarning($"[EyeTrackingDataReceiver] Connection timed out after {readTimeout}ms. No messages received.");
+                timeoutWatch.Stop();
+                rtspClient?.Stop();
+            }
+        }
+
+        public virtual void Stop()
+        {
+            shouldReconnect = false;
+            timeoutWatch.Stop();
             rtspClient?.Stop();
         }
-    }
 
-    //TODO handle autoreconnect and timetout only here, fire own event since rtspclient can be replaced over time
+        protected virtual void OnDestroy()
+        {
+            Stop();
+        }
+    }
 }

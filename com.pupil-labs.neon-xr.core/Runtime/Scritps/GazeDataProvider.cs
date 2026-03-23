@@ -4,7 +4,6 @@ namespace PupilLabs
 {
     public abstract class GazeDataProvider : MonoBehaviour
     {
-        public abstract Vector3 RawGazeDir { get; }
         public abstract Vector2 RawGazePoint { get; }
         public abstract bool EyeStateAvailable { get; }
         public abstract EyeState RawEyeState { get; }
@@ -12,9 +11,10 @@ namespace PupilLabs
         public abstract Eyelid RawEyelid { get; }
 
         public Pose GazeOrigin { get { return gazeOrigin; } }
-        protected Pose gazeOrigin;
+        protected Pose gazeOrigin = Pose.identity;
 
-        public virtual Ray GazeRay { get { return new Ray(gazeOrigin.position, gazeOrigin.rotation * RawGazeDir); } }
+        public virtual Vector3 RawGazeDir { get { return PointToDir(RawGazePoint); } }
+        public virtual Ray GazeRay { get { return DirToRay(RawGazeDir); } }
         public virtual EyeState EyeState
         {
             get
@@ -36,6 +36,13 @@ namespace PupilLabs
         }
 
         public Serializable.GazeDataProviderEvent gazeDataReady;
+
+        public abstract Vector3 PointToDir(Vector2 point);
+
+        public virtual Ray DirToRay(Vector3 rawGazeDir)
+        {
+            return new Ray(gazeOrigin.position, gazeOrigin.rotation * rawGazeDir.normalized);
+        }
 
         protected virtual void OnGazeDataReady()
         {

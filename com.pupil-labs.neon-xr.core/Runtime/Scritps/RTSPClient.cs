@@ -5,7 +5,7 @@ using UnityEngine;
 
 namespace PupilLabs
 {
-    public delegate void DataHandler(
+    public delegate void RTSPDataHandler(
         long timestampMs,
         bool rtcpSynchronized,
         byte streamId,
@@ -15,7 +15,7 @@ namespace PupilLabs
 
     public abstract class RTSPClient : Disposable
     {
-        public event DataHandler DataReceived;
+        public event RTSPDataHandler DataReceived;
 
         protected CancellationTokenSource stopCts = null;
 
@@ -43,11 +43,7 @@ namespace PupilLabs
 
         protected virtual void OnDataReceived(long timestampMs, bool rtcpSynchronized, byte streamId, byte payloadFormat, uint dataSize, IntPtr data)
         {
-            DataHandler handler = DataReceived;
-            if (handler != null)
-            {
-                handler(timestampMs, rtcpSynchronized, streamId, payloadFormat, dataSize, data);
-            }
+            DataReceived?.Invoke(timestampMs, rtcpSynchronized, streamId, payloadFormat, dataSize, data);
         }
     }
 }

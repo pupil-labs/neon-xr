@@ -18,10 +18,7 @@ namespace PupilLabs
         private readonly byte[] messageBuffer = new byte[8192];
         private readonly MemoryStream messageStream = null;
 
-        CancellationTokenSource timeoutCts;
-        CancellationToken timeoutToken;
         CancellationToken stopToken;
-        CancellationToken stopOrTimeoutToken;
 
         public RTSPClientWs(string ip, int port)
         {
@@ -36,37 +33,29 @@ namespace PupilLabs
             using (stopCts = new CancellationTokenSource())
             {
                 stopToken = stopCts.Token;
-                using (timeoutCts = new CancellationTokenSource())
-                {
-                    timeoutToken = timeoutCts.Token;
-                    using (CancellationTokenSource stopOrTimeoutCts = CancellationTokenSource.CreateLinkedTokenSource(timeoutToken, stopToken))
-                    {
-                        stopOrTimeoutToken = stopOrTimeoutCts.Token;
 
-                        try
-                        {
-                            string url = $"rtsp://{ip}:{port}";
-                            Debug.Log($"[RTSPClientWs] using url: {url}");
-                            using (ClientWebSocket ws = new ClientWebSocket())
-                            {
-                                await InitiateConnection(ws, ip, port);
-                                string session = await InitiateStreaming(ws, url);
-                                await Listen(ws);
-                                await StopStreaming(ws, url, session);
-                            }
-                        }
-                        catch (Exception e)
-                        {
-                            if (e is TaskCanceledException || e is WebSocketException || e is OperationCanceledException)
-                            {
-                                Debug.Log("[RTSPClientWs] listening aborted");
-                                Debug.Log(e.Message);
-                            }
-                            else
-                            {
-                                throw;
-                            }
-                        }
+                try
+                {
+                    string url = $"rtsp://{ip}:{port}";
+                    Debug.Log($"[RTSPClientWs] using url: {url}");
+                    using (ClientWebSocket ws = new ClientWebSocket())
+                    {
+                        await InitiateConnection(ws, ip, port);
+                        string session = await InitiateStreaming(ws, url);
+                        await Listen(ws);
+                        await StopStreaming(ws, url, session);
+                    }
+                }
+                catch (Exception e)
+                {
+                    if (e is TaskCanceledException || e is WebSocketException || e is OperationCanceledException)
+                    {
+                        Debug.Log("[RTSPClientWs] listening aborted");
+                        Debug.Log(e.Message);
+                    }
+                    else
+                    {
+                        throw;
                     }
                 }
             }
@@ -74,27 +63,23 @@ namespace PupilLabs
 
         private async Task InitiateConnection(ClientWebSocket ws, string ip, int port, int timeout = 1000)
         {
-            timeoutCts.CancelAfter(timeout);
-            await ws.ConnectAsync(new Uri($"ws://{ip}:{port}"), stopOrTimeoutToken);
-            timeoutCts.CancelAfter(Timeout.Infinite);
+            await ws.ConnectAsync(new Uri($"ws://{ip}:{port}"), stopToken);
         }
 
         private async Task<string> InitiateStreaming(ClientWebSocket ws, string url, int timeout = 5000)
         {
-            timeoutCts.CancelAfter(timeout);
-
             //send describe and read response
             string rmsg = String.Format(RTSPTemplates.describe, url);
             Debug.Log($"[RTSPClientWs] sending: {rmsg}");
-            await SendMessageAsync(ws, rmsg, stopOrTimeoutToken);
-            string response = await ReceiveStringMessageAsync(ws, stopOrTimeoutToken); //no need to send teardown before setup so we can just cancel
+            await SendMessageAsync(ws, rmsg, stopToken);
+            string response = await ReceiveStringMessageAsync(ws, stopToken); //no need to send teardown before setup so we can just cancel
             Debug.Log($"[RTSPClientWs] received: {response}");
 
             //send setup and read response
             rmsg = String.Format(RTSPTemplates.setup, url);
             Debug.Log($"[RTSPClientWs] sending: {rmsg}");
-            await SendMessageAsync(ws, rmsg, timeoutToken); //from this point we want to stop task peacefully if possible and end session using teardown
-            response = await ReceiveStringMessageAsync(ws, timeoutToken);
+            await SendMessageAsync(ws, rmsg, stopToken); //from this point we want to stop task peacefully if possible and end session using teardown
+            response = await ReceiveStringMessageAsync(ws, stopToken);
             Debug.Log($"[RTSPClientWs] received: {response}");
 
             //get session
@@ -105,9 +90,8 @@ namespace PupilLabs
             //send play
             rmsg = String.Format(RTSPTemplates.play, url, session);
             Debug.Log($"[RTSPClientWs] sending: {rmsg}");
-            await SendMessageAsync(ws, rmsg, timeoutToken);
+            await SendMessageAsync(ws, rmsg, stopToken);
 
-            timeoutCts.CancelAfter(Timeout.Infinite);
             return session;
         }
 
@@ -124,41 +108,39 @@ namespace PupilLabs
                     if (msgCounter++ == msgsPerTimer)
                     {
                         msgCounter = 0;
-                        timeoutCts.CancelAfter(readTimeout);
                     }
-                    bool binaryMessageReceived = await ReceiveMessageAsync(ws, timeoutToken);
+                    bool binaryMessageReceived = await ReceiveMessageAsync(ws, stopToken);
                     if (binaryMessageReceived && GetRTPType(messageBuffer) == 99)
                     {
                         OnDataReceived(0, false, 0, (byte)StreamId.Gaze, (uint)messageStream.Length, dataOffset, messageBuffer);
                     }
                 }
-                timeoutCts.CancelAfter(Timeout.Infinite);
             });
         }
 
         private async Task StopStreaming(ClientWebSocket ws, string url, string session, int timeout = 2500)
         {
-            timeoutCts.CancelAfter(timeout);
-
-            //send teardown and wait for proper response
-            string rmsg = String.Format(RTSPTemplates.tear, url, session);
-            Debug.Log($"[RTSPClientWs] sending: {rmsg}");
-            await SendMessageAsync(ws, rmsg, timeoutToken);
-            await Task.Run(async () =>
+            using (CancellationTokenSource teardownCts = new CancellationTokenSource(timeout))
             {
-                while (true)
+                CancellationToken teardownToken = teardownCts.Token;
+                //send teardown and wait for proper response
+                string rmsg = String.Format(RTSPTemplates.tear, url, session);
+                Debug.Log($"[RTSPClientWs] sending: {rmsg}");
+                await SendMessageAsync(ws, rmsg, teardownToken);
+                await Task.Run(async () =>
                 {
-                    string msg = await ReceiveStringMessageAsync(ws, timeoutToken);
-                    if (msg != null && msg.StartsWith("RTSP/1.0 200 OK"))
+                    while (true)
                     {
-                        await ws.CloseAsync(WebSocketCloseStatus.NormalClosure, null, timeoutToken);
-                        break;
+                        string msg = await ReceiveStringMessageAsync(ws, teardownToken);
+                        if (msg != null && msg.StartsWith("RTSP/1.0 200 OK"))
+                        {
+                            await ws.CloseAsync(WebSocketCloseStatus.NormalClosure, null, teardownToken);
+                            break;
+                        }
                     }
-                }
-            });
-            Debug.Log("[RTSPClientWs] closed");
-
-            timeoutCts.CancelAfter(Timeout.Infinite);
+                });
+                Debug.Log("[RTSPClientWs] closed");
+            }
         }
 
         private int GetRTPType(byte[] bytes)
@@ -209,6 +191,7 @@ namespace PupilLabs
         protected override void DisposeManagedResources()
         {
             messageStream.Dispose();
+            base.DisposeManagedResources();
         }
 
         private static class RTSPTemplates

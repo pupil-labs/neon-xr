@@ -27,6 +27,8 @@ namespace PupilLabs
                     worker.DataReceived += DataCallback;
                     worker.LogMessageReceived += LogCallback;
                     await Task.Delay(Timeout.Infinite, stopCts.Token).NoThrow();
+                    worker.DataReceived -= DataCallback;
+                    worker.LogMessageReceived -= LogCallback;
                 }
                 //stopCts must be valid till end due to callback, on C side there is thread.join(), might need rework
             }

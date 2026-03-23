@@ -1,4 +1,3 @@
-using System;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -34,9 +33,9 @@ namespace PupilLabs
         private volatile bool dataReceived = false;
         private IGazeDataSource lockedGazeDataSource = null;
 
+        public GazeData RawGazeData { get { return rawGazeData; } }
+        private GazeData rawGazeData;
         public bool Ready { get; private set; } = false;
-        public override Vector3 RawGazeDir { get { return rawGazeDir; } }
-        private Vector3 rawGazeDir = Vector3.forward;
         public override Vector2 RawGazePoint { get { return rawGazePoint; } }
         private Vector2 rawGazePoint;
         public override bool EyeStateAvailable { get { return eyeStateAvailable; } }
@@ -69,6 +68,15 @@ namespace PupilLabs
             dataReceived = true;
         }
 
+        public override Vector3 PointToDir(Vector2 gazePoint)
+        {
+            if (Ready == false)
+            {
+                return Vector3.forward;
+            }
+            return CameraUtils.ImgPointToDir(gazePoint, storage.CameraIntrinsics.cameraMatrix, storage.CameraIntrinsics.distortionCoefficients);
+        }
+
         private void Update()
         {
             if (Ready == false)
@@ -86,22 +94,20 @@ namespace PupilLabs
                 }
                 else if (lockedGazeDataSource != null)
                 {
-                    GazeData gazeData = lockedGazeDataSource.GazeData;
-                    rawGazePoint = gazeData.gazePoint;
-                    eyeStateAvailable = gazeData.type >= EtDataType.EyeStateGazeData;
-                    rawEyeState = gazeData.eyeState;
-                    eyelidAvailable = gazeData.type >= EtDataType.EyeStateEyelidGazeData;
-                    rawEyelid = gazeData.eyelid;
+                    rawGazeData = lockedGazeDataSource.GazeData;
+                    rawGazePoint = rawGazeData.gazePoint;
+                    eyeStateAvailable = rawGazeData.type >= EtDataType.EyeStateGazeData;
+                    rawEyeState = rawGazeData.eyeState;
+                    eyelidAvailable = rawGazeData.type >= EtDataType.EyeStateEyelidGazeData;
+                    rawEyelid = rawGazeData.eyelid;
                     dataReceived = false;
                 }
-
-                rawGazeDir = CameraUtils.ImgPointToDir(rawGazePoint, storage.CameraIntrinsics.cameraMatrix, storage.CameraIntrinsics.distortionCoefficients);
 
                 if (simulationEnabled && simulateEyeState)
                 {
                     eyeStateAvailable = true;
 
-                    Vector3 gazePoint = rawGazeDir.normalized * simulatedGazeDistance;
+                    Vector3 gazePoint = RawGazeDir.normalized * simulatedGazeDistance;
 
                     rawEyeState.eyeballCenterLeft = simulatedLeftEyePos;
                     rawEyeState.opticalAxisLeft = gazePoint - simulatedLeftEyePos;
