@@ -11,6 +11,15 @@ namespace PupilLabs
         public event RTSPDataHandler DataReceived;
 
         [SerializeField]
+        StreamSelection selectedStreams = new StreamSelection
+        {
+            Gaze = true,
+            Imu = false,
+            World = false,
+            EyeEvents = false,
+            Eyes = false
+        };
+        [SerializeField]
         protected DataStorage storage;
         [SerializeField]
         protected DeviceManager deviceManager;
@@ -109,8 +118,8 @@ namespace PupilLabs
 
                     using (
                         rtspClient = rtspSettings.useUdp ?
-                            new RTSPClientLive555(currentIp, rtspSettings.port) :
-                            new RTSPClientWs(currentIp, rtspSettings.port)
+                            new RTSPClientLive555(currentIp, rtspSettings.port, selectedStreams.GetMask()) :
+                            new RTSPClientWs(currentIp, rtspSettings.port) //only gaze stream supported in ws client and always enabled
                     )
                     {
                         rtspClient.DataReceived += OnDataReceived;

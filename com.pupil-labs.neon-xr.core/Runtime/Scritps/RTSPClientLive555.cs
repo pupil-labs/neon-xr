@@ -9,11 +9,13 @@ namespace PupilLabs
     {
         private readonly string ip;
         private readonly int port;
+        private readonly byte streamMask;
 
-        public RTSPClientLive555(string ip, int port)
+        public RTSPClientLive555(string ip, int port, byte streamMask)
         {
             this.ip = ip;
             this.port = port;
+            this.streamMask = streamMask;
         }
 
         public override async Task RunAsync()
@@ -22,7 +24,7 @@ namespace PupilLabs
 
             using (stopCts = new CancellationTokenSource())
             {
-                using (RTSPWorker worker = RTSPServiceWrapper.StartWorker<RTSPWorker>(url, 1 << (int)StreamId.Gaze))
+                using (RTSPWorker worker = RTSPServiceWrapper.StartWorker<RTSPWorker>(url, streamMask))
                 {
                     worker.DataReceived += DataCallback;
                     worker.LogMessageReceived += LogCallback;

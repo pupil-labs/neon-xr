@@ -96,4 +96,25 @@ namespace PupilLabs.Serializable
         public string device_name;
         public string device_id;
     }
+
+    [Serializable]
+    public struct StreamSelection
+    {
+        public bool Imu;
+        public bool World;
+        public bool Gaze;
+        public bool EyeEvents;
+        public bool Eyes;
+
+        public byte GetMask()
+        {
+            byte mask = 0;
+            if (Imu) mask |= (byte)(1 << (byte)StreamId.Imu);
+            if (World) mask |= (byte)(1 << (byte)StreamId.World);
+            if (Gaze) mask |= (byte)(1 << (byte)StreamId.Gaze);
+            if (EyeEvents) mask |= (byte)(1 << (byte)StreamId.EyeEvents);
+            if (Eyes) mask |= (byte)(1 << (byte)StreamId.Eyes);
+            return mask;
+        }
+    }
 }

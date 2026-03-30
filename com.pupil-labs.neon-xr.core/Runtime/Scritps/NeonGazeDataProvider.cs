@@ -31,8 +31,9 @@ namespace PupilLabs
         private float simulatedPupilDiameter = 0.004f;
 
         private volatile bool dataReceived = false;
-        private IGazeDataSource lockedGazeDataSource = null;
+        private GazeDataSource lockedGazeDataSource = null;
 
+        public GazeDataSource GazeDataSource { get { return lockedGazeDataSource; } }
         public GazeData RawGazeData { get { return rawGazeData; } }
         private GazeData rawGazeData;
         public bool Ready { get; private set; } = false;

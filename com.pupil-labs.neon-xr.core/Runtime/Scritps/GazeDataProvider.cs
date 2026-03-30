@@ -44,6 +44,11 @@ namespace PupilLabs
             return new Ray(gazeOrigin.position, gazeOrigin.rotation * rawGazeDir.normalized);
         }
 
+        public virtual Ray PointToRay(Vector2 point)
+        {
+            return DirToRay(PointToDir(point));
+        }
+
         protected virtual void OnGazeDataReady()
         {
             gazeDataReady.Invoke(this);
