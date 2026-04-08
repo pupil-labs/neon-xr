@@ -275,6 +275,7 @@ GameObject:
   - component: {fileID: 1639342480478845549}
   - component: {fileID: 1386475470464524075}
   - component: {fileID: 8614415763382191434}
+  - component: {fileID: 358661433571191782}
   m_Layer: 0
   m_Name: PupilLabs
   m_TagString: Untagged
@@ -327,7 +328,7 @@ MonoBehaviour:
           m_BoolArgument: 0
         m_CallState: 2
   storage: {fileID: 7075240641983346918}
-  deviceManager: {fileID: 8614415763382191434}
+  gazeDataSource: {fileID: 358661433571191782}
   simulationEnabled: 0
   simulatedLookHorizontal: {fileID: -6932262263430848521, guid: dbe6b3138e9ef144985c14a00c593902, type: 3}
   simulatedLookVertical: {fileID: -5590501381152332643, guid: dbe6b3138e9ef144985c14a00c593902, type: 3}
@@ -338,7 +339,6 @@ MonoBehaviour:
   simulatedRightEyePos: {x: 0.032, y: -0.02, z: -0.02}
   simulatedGazeDistance: 1
   simulatedPupilDiameter: 0.004
-  rtspAutoReconnect: 1
 --- !u!114 &7075240641983346918
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -411,6 +411,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   storage: {fileID: 7075240641983346918}
+  repeatOffsetEstimationAfterMs: -1
+  tryAllLocalIps: 0
   selectionChanged:
     m_PersistentCalls:
       m_Calls: []
@@ -420,3 +422,25 @@ MonoBehaviour:
   timeOffsetEstimated:
     m_PersistentCalls:
       m_Calls: []
+--- !u!114 &358661433571191782
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8710468954958210967}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: aa134f181c650314981219ae555ba180, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  selectedStreams:
+    Imu: 0
+    World: 0
+    Gaze: 1
+    EyeEvents: 0
+    Eyes: 0
+  storage: {fileID: 7075240641983346918}
+  deviceManager: {fileID: 8614415763382191434}
+  connectOnAwake: 1
+  autoReconnect: 1
